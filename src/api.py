@@ -23,7 +23,7 @@ def load_data(csv):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading data: {e}")
 
-# 進行分析與娉辜
+# 進行分析與評估
 def predict_scores(df):
     model = load_model()
     predictions = np.round(model.predict(df), 3)
@@ -31,14 +31,14 @@ def predict_scores(df):
 
 # API：水質資料分析每筆資料平均總分數
 @app.get("/score/total/") # http://127.0.0.1:8000/score/total/?csv=data.csv
-def predict_total(csv: str):
+async def predict_total(csv: str):
     data = load_data(csv)
     predictions = predict_scores(data)
     return float(np.mean(predictions))
 
 # API：水質資料分析每筆資料分數
 @app.get("/score/all/") # http://127.0.0.1:8000/score/all/?csv=data.csv
-def predict_all(csv: str):
+async def predict_all(csv: str):
     data = load_data(csv)
     predictions = predict_scores(data)
     return predictions.tolist()
