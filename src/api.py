@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import joblib
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 
 app = FastAPI()
 
@@ -30,18 +30,24 @@ def predict_scores(df):
     return predictions
 
 # API：水質資料分析每筆資料平均總分數
-@app.get("/score/total/") # http://127.0.0.1:8000/score/total/?csv=data.csv
-async def predict_total(csv: str):
-    data = load_data(csv)
-    predictions = predict_scores(data)
-    return float(np.mean(predictions))
+@app.post("/score/total/") # 使用 POST 方法處理上傳的 CSV 檔案
+async def predict_total(file: UploadFile = File(...)):
+    try:
+        df = pd.read_csv(file.file)
+        predictions = predict_scores(df)
+        return float(np.mean(predictions))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
 
 # API：水質資料分析每筆資料分數
-@app.get("/score/all/") # http://127.0.0.1:8000/score/all/?csv=data.csv
-async def predict_all(csv: str):
-    data = load_data(csv)
-    predictions = predict_scores(data)
-    return predictions.tolist()
+@app.post("/score/all/") # 使用 POST 方法處理上傳的 CSV 檔案
+async def predict_all(file: UploadFile = File(...)):
+    try:
+        df = pd.read_csv(file.file)
+        predictions = predict_scores(df)
+        return predictions.tolist()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
 
 if __name__ == "__main__":
     app.run()
