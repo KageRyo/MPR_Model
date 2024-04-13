@@ -42,7 +42,7 @@ async def predict_total(file: UploadFile = File(...)):
         df = pd.read_csv(file.file)
         predictions = predict_scores(df)
         result = float(np.mean(predictions))
-        print(result)
+        print("綜合平均分數："+result)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
@@ -55,7 +55,7 @@ async def predict_all(file: UploadFile = File(...)):
         df = pd.read_csv(file.file)
         predictions = predict_scores(df)
         result = predictions.tolist()
-        print(result)
+        print("每組資料個別分數："+result)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
