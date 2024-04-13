@@ -8,7 +8,7 @@ app = FastAPI()
 # 讀取模型
 def load_model():
     try:
-        return joblib.load('models/modelVer.6.01.pkl')
+        return joblib.load('models/modelVer.1.03.pkl')
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="Model file not found")
     except Exception as e:
@@ -29,23 +29,34 @@ def predict_scores(df):
     predictions = np.round(model.predict(df), 3)
     return predictions
 
+# API : 首頁
+@app.get("/")
+async def read_root():
+    return {"message": "成功與 API 連線!"}
+
 # API：水質資料分析每筆資料平均總分數
+# http://<apiurl>:8000/score/total/
 @app.post("/score/total/") # 使用 POST 方法處理上傳的 CSV 檔案
 async def predict_total(file: UploadFile = File(...)):
     try:
         df = pd.read_csv(file.file)
         predictions = predict_scores(df)
-        return float(np.mean(predictions))
+        result = float(np.mean(predictions))
+        print(result)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
 
 # API：水質資料分析每筆資料分數
+# http://<apiurl>:8000/score/all/
 @app.post("/score/all/") # 使用 POST 方法處理上傳的 CSV 檔案
 async def predict_all(file: UploadFile = File(...)):
     try:
         df = pd.read_csv(file.file)
         predictions = predict_scores(df)
-        return predictions.tolist()
+        result = predictions.tolist()
+        print(result)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
 
