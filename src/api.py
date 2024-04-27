@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import joblib
+import traceback
 from fastapi import FastAPI, HTTPException, UploadFile, File
 
 app = FastAPI()
@@ -39,12 +40,16 @@ async def read_root():
 @app.post("/score/total/") # 使用 POST 方法處理上傳的 CSV 檔案
 async def predict_total(file: UploadFile = File(...)):
     try:
+        print("收到前端POST請求")
         df = pd.read_csv(file.file)
         predictions = predict_scores(df)
         result = float(np.mean(predictions))
+        print(f"Received file: {file.filename}")
+        print(f"Content type: {file.content_type}")
         print(result)
         return result
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
 
 # API：水質資料分析每筆資料分數
@@ -52,12 +57,16 @@ async def predict_total(file: UploadFile = File(...)):
 @app.post("/score/all/") # 使用 POST 方法處理上傳的 CSV 檔案
 async def predict_all(file: UploadFile = File(...)):
     try:
+        print("收到前端POST請求")
         df = pd.read_csv(file.file)
         predictions = predict_scores(df)
         result = predictions.tolist()
+        print(f"Received file: {file.filename}")
+        print(f"Content type: {file.content_type}")
         print(result)
         return result
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
 
 if __name__ == "__main__":
