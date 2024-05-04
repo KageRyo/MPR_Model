@@ -2,9 +2,15 @@ import numpy as np
 import pandas as pd
 import joblib
 import traceback
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 
 app = FastAPI()
+
+# 在記憶體中緩存整個母體資料集的分數
+try:
+    all_scores = pd.read_csv('data/model_data.csv')['Score']
+except Exception as e:
+    raise HTTPException(status_code=500, detail=f"Error loading data: {e}")
 
 # 讀取模型
 def load_model():
@@ -35,6 +41,15 @@ def predict_scores(df):
 async def read_root():
     return {"message": "成功與 API 連線!"}
 
+# API：計算指定分數的百分位數
+@app.get("/percentile/")
+async def calculate_percentile(score: float = Query(..., description="The score to evaluate")):
+    try:
+        percentile = (all_scores <= score).mean() * 100
+        return {"percentile": percentile}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating percentile: {e}")
+
 # API：水質資料分析每筆資料平均總分數
 # http://<apiurl>:8000/score/total/
 @app.post("/score/total/") # 使用 POST 方法處理上傳的 CSV 檔案
@@ -43,7 +58,7 @@ async def predict_total(file: UploadFile = File(...)):
         print("收到前端POST請求")
         df = pd.read_csv(file.file)
         predictions = predict_scores(df)
-        result = float(np.mean(predictions))
+        result = float(np.mean(predictions))    # 計算平均分數
         print(f"Received file: {file.filename}")
         print(f"Content type: {file.content_type}")
         print(result)
