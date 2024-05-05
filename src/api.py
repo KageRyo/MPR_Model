@@ -36,13 +36,13 @@ def predict_scores(df):
     predictions = np.round(model.predict(df), 3)
     return predictions
 
-# API : 
+# API : 測試 API 是否正常運作 (GET)
 # http://<apiurl>:8000/
 @app.get("/")
 async def read_root():
     return {"message": "成功與 API 連線!"}
 
-# API：計算指定分數的百分位數
+# API：計算指定分數的百分位數 (GET)
 # http://<apiurl>:8000/percentile/?score=${data}
 @app.get("/percentile/")
 async def calculate_percentile(score: float = Query(..., description="The score to evaluate")):
@@ -52,7 +52,7 @@ async def calculate_percentile(score: float = Query(..., description="The score 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating percentile: {e}")
     
-# API : 計算分數的類別
+# API : 計算分數的類別 (GET)
 # http://<apiurl>:8000/categories/
 @app.get("/categories/")
 async def get_categories():
@@ -67,7 +67,7 @@ async def get_categories():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving categories: {e}")
 
-# API：水質資料分析每筆資料平均總分數
+# API：水質資料分析每筆資料平均總分數 (POST)
 # http://<apiurl>:8000/score/total/
 @app.post("/score/total/") # 使用 POST 方法處理上傳的 CSV 檔案
 async def predict_total(file: UploadFile = File(...)):
@@ -84,7 +84,7 @@ async def predict_total(file: UploadFile = File(...)):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
 
-# API：水質資料分析每筆資料分數
+# API：水質資料分析每筆資料分數 (POST)
 # http://<apiurl>:8000/score/all/
 @app.post("/score/all/") # 使用 POST 方法處理上傳的 CSV 檔案
 async def predict_all(file: UploadFile = File(...)):
