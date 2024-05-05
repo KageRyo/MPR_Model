@@ -36,12 +36,14 @@ def predict_scores(df):
     predictions = np.round(model.predict(df), 3)
     return predictions
 
-# API : 首頁
+# API : 
+# http://<apiurl>:8000/
 @app.get("/")
 async def read_root():
     return {"message": "成功與 API 連線!"}
 
 # API：計算指定分數的百分位數
+# http://<apiurl>:8000/percentile/?score=${data}
 @app.get("/percentile/")
 async def calculate_percentile(score: float = Query(..., description="The score to evaluate")):
     try:
@@ -49,6 +51,21 @@ async def calculate_percentile(score: float = Query(..., description="The score 
         return {"percentile": percentile}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating percentile: {e}")
+    
+# API : 計算分數的類別
+# http://<apiurl>:8000/categories/
+@app.get("/categories/")
+async def get_categories():
+    try:
+        df = pd.read_csv('data/model_data.csv')
+        bins = [0, 15, 30, 50, 70, 85, 100]  # 定義分數範圍的界限
+        labels = ['惡劣', '糟糕', '不良', '中等', '良好', '優良']
+        df['Category'] = pd.cut(df['Score'], bins=bins, labels=labels, right=False)
+        category_counts = df['Category'].value_counts().reset_index()
+        category_counts.columns = ['category', 'score']
+        return {"data": category_counts.to_dict('records')}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving categories: {e}")
 
 # API：水質資料分析每筆資料平均總分數
 # http://<apiurl>:8000/score/total/
