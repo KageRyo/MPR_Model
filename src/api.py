@@ -62,7 +62,7 @@ async def get_categories():
         labels = ['惡劣', '糟糕', '不良', '中等', '良好', '優良']
         df['Category'] = pd.cut(df['Score'], bins=bins, labels=labels, right=False)
         category_counts = df['Category'].value_counts().reset_index()
-        category_counts.columns = ['category', 'score']
+        category_counts.columns = ['category', 'rating']
         return {"data": category_counts.to_dict('records')}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving categories: {e}")
