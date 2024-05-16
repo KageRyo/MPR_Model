@@ -9,42 +9,51 @@ from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.linear_model import Lasso
 from sklearn.impute import SimpleImputer
 
-# 讀取數據
-dataset=pd.read_csv('data/'+os.listdir('data')[6])
+# 讀取水質資料
+dataset = pd.read_csv('data/'+os.listdir('data')[6])
 print(dataset)
 df = pd.DataFrame(dataset)
-#以平均值填補缺失值
+
+# 以平均值填補缺失值
 imputer = SimpleImputer(strategy='mean')
 data = imputer.fit_transform(df)
-# 將填補好的數據轉換為DataFrame格式
+
+# 將填補好的水質資料轉換為DataFrame格式
 data = pd.DataFrame(np.round(data, 2), columns=df.columns)
+
 # 創建新特徵
 data['DO_BOD_ratio'] = np.where(data['BOD'] == 0, 0, data['DO'] / data['BOD'])
 data['BOD_NH3N_product'] = data['BOD'] * data['NH3N']
-# 切分數據集
+
+# 切分資料集
 X = data.drop(columns=['Score'])
 y = data['Score'].values.ravel()
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=0)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=0)
 
-# 創建多元多項式回歸模型
+# 創建多元多項式迴歸模型
 model = Pipeline([
-    ("poly_features", PolynomialFeatures()),  
+    ("poly_features", PolynomialFeatures()),
     ("std_scaler", StandardScaler()),
-    ('lasso', Lasso())  
+    ('lasso', Lasso())
 ])
+
 # 網格搜索參數
 param_grid = {
-    'poly_features__degree': [6],      
-    'lasso__alpha': [0.1], 
+    'poly_features__degree': [6],
+    'lasso__alpha': [0.1],
 }
 # 交叉驗證
 grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=10)
+
 # 網格搜索
 grid_search.fit(X_train, y_train)
+
 # 獲取最佳參數和最佳得分
 best_params = grid_search.best_params_
 best_score = grid_search.best_score_
 print("最佳参数：", best_params, "最佳得分：", best_score)
+
 # 使用最佳參數構建模型
 model.set_params(**best_params)
 model.fit(X_train, y_train)
