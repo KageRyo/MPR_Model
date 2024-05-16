@@ -15,7 +15,7 @@ except Exception as e:
 # 讀取模型
 def load_model():
     try:
-        return joblib.load('models/modelVer.1.03.pkl')
+        return joblib.load('models/modelVer.1.4.1.pkl')
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="Model file not found")
     except Exception as e:
@@ -74,6 +74,9 @@ async def predict_total(file: UploadFile = File(...)):
     try:
         print("收到前端POST請求")
         df = pd.read_csv(file.file)
+        df['DO_BOD_ratio'] = np.where(df['BOD'] == 0, 0, df['DO'] / df['BOD'])
+        df['BOD_NH3N_product'] = df['BOD'] * df['NH3N']
+        print(df)
         predictions = predict_scores(df)
         result = float(np.mean(predictions))    # 計算平均分數
         print(f"Received file: {file.filename}")
@@ -91,6 +94,8 @@ async def predict_all(file: UploadFile = File(...)):
     try:
         print("收到前端POST請求")
         df = pd.read_csv(file.file)
+        df['DO_BOD_ratio'] = np.where(df['BOD'] == 0, 0, df['DO'] / df['BOD'])
+        df['BOD_NH3N_product'] = df['BOD'] * df['NH3N']
         predictions = predict_scores(df)
         result = predictions.tolist()
         print(f"Received file: {file.filename}")
