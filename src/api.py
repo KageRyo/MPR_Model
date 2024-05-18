@@ -105,7 +105,7 @@ async def predict_total(file: UploadFile = File(...)):
         print(f"Content type: {file.content_type}")
         print(result)
         print(assessment)
-        return {"average_score": result, "assessment": assessment}
+        return {"score": result, "assessment": assessment}
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
@@ -127,7 +127,7 @@ async def predict_all(file: UploadFile = File(...)):
         print(f"Content type: {file.content_type}")
         print(result)
         print(assessment)
-        return {"average_score": result, "assessment": assessment}
+        return {"score": result, "assessment": assessment}
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
