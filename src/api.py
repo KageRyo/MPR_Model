@@ -36,6 +36,27 @@ def predict_scores(df):
     predictions = np.round(model.predict(df), 3)
     return predictions
 
+# 評估個別水質項目的品質
+def assess_quality(df):
+    assess_dict = {}
+    # 定義水質項目的品質評估範圍
+    def assess_range(val, good_rng, normal_rngs, bad_rng):
+        if good_rng[0] <= val <= good_rng[1]:
+            return '好'
+        elif any(normal_rng[0] <= val <= normal_rng[1] for normal_rng in normal_rngs):
+            return '普通'
+        elif bad_rng[0] <= val <= bad_rng[1]:
+            return '不好'
+        else:
+            return '異常'
+    # 計算各項目的品質評估
+    assess_dict['DO'] = assess_range(df['DO'].mean(), [80, 120], [[55, 80], [120, 140]], [0, 55])
+    assess_dict['BOD'] = assess_range(df['BOD'].mean(), [0, 2], [[2, 4]], [4, 25])
+    assess_dict['NH3N'] = assess_range(df['NH3N'].mean(), [0, 0.1], [[0.1, 1]], [1, 8])
+    assess_dict['SS'] = assess_range(df['SS'].mean(), [0, 10], [[10, 40]], [40, 1000])
+    assess_dict['EC'] = assess_range(df['EC'].mean(), [0, 400], [[400, 750]], [750, 3000])
+    return assess_dict
+
 # API : 測試 API 是否正常運作 (GET)
 # http://<apiurl>:8000/
 @app.get("/")
@@ -77,12 +98,14 @@ async def predict_total(file: UploadFile = File(...)):
         df['DO_BOD_ratio'] = np.where(df['BOD'] == 0, 0, df['DO'] / df['BOD'])
         df['BOD_NH3N_product'] = df['BOD'] * df['NH3N']
         print(df)
-        predictions = predict_scores(df)
+        predictions = predict_scores(df)        # AI機器學習（MPR模型）進行分析
         result = float(np.mean(predictions))    # 計算平均分數
+        assessment = assess_quality(df)         # 進行個別項目品質評估
         print(f"Received file: {file.filename}")
         print(f"Content type: {file.content_type}")
         print(result)
-        return result
+        print(assessment)
+        return {"average_score": result, "assessment": assessment}
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
@@ -96,15 +119,19 @@ async def predict_all(file: UploadFile = File(...)):
         df = pd.read_csv(file.file)
         df['DO_BOD_ratio'] = np.where(df['BOD'] == 0, 0, df['DO'] / df['BOD'])
         df['BOD_NH3N_product'] = df['BOD'] * df['NH3N']
-        predictions = predict_scores(df)
-        result = predictions.tolist()
+        print(df)
+        predictions = predict_scores(df)        # AI機器學習（MPR模型）進行分析
+        result = float(np.mean(predictions))    # 計算平均分數
+        assessment = assess_quality(df)         # 進行個別項目品質評估
         print(f"Received file: {file.filename}")
         print(f"Content type: {file.content_type}")
         print(result)
-        return result
+        print(assessment)
+        return {"average_score": result, "assessment": assessment}
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
 
+# API程式起始點
 if __name__ == "__main__":
     app.run()
