@@ -42,11 +42,11 @@ def assess_quality(df):
     # 定義水質項目的品質評估範圍
     def assess_range(val, good_rng, normal_rngs, bad_rng):
         if good_rng[0] <= val <= good_rng[1]:
-            return '好'
+            return '良好'
         elif any(normal_rng[0] <= val <= normal_rng[1] for normal_rng in normal_rngs):
-            return '普通'
+            return '中等'
         elif bad_rng[0] <= val <= bad_rng[1]:
-            return '不好'
+            return '不良'
         else:
             return '異常'
     # 計算各項目的品質評估
