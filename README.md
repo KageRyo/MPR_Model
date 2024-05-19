@@ -28,12 +28,13 @@ python3 main.py
 | ...    	                                          	|
   
 - 您可以搭配 [WaterMirror](https://github.com/RotatingPotato/WaterMirror) 作為前端行動裝置應用程式使用。
+- 當然，您也可以在不違反 [Apache License 2.0](LICENSE) 的前提下自由修改。
 
 ## 貢獻
 歡迎貢獻！ 如果您發現任何錯誤或有改進建議，歡迎提出 Issues 或 Pull Requests。  
 
 ## LICENSE  
-本程式開源授權條款討論中，請靜待開放，謝謝您。   
+本程式採用 Apache License 2.0 授權 - 有關詳細信息，請參閱 [LICENSE](LICENSE) 文件。  
 有任何疑問請洽 kageryo@coderyo.com  
 + 張健勳 Chien-Hsun, Chang [@KageRyo](https://github.com/KageRyo)   
 + 吳國維 Kuo-Wei, Wu [@RRAaru](https://github.com/RRAaru)
