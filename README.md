@@ -27,7 +27,7 @@ python3 main.py
 | DO數值 	| BOD數值 	| NH3N數值 	| EC數值 	| SS數值 	|
 | ...    	                                          	|
   
-- 您可以搭配 [WaterMirror](https://github.com/RotatingPotato/WaterMirror) 作為前端行動裝置應用程式使用。
+- 您可以搭配 [WaterMirror](https://github.com/KageRyo/WaterMirror) 作為前端行動裝置應用程式使用。
 - 當然，您也可以在不違反 [Apache License 2.0](LICENSE) 的前提下自由修改。
 
 ## 貢獻
