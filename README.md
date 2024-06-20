@@ -4,7 +4,7 @@ MPR_Model 是基於機器學習的多元多項式水質分析模型，可幫助�
 # 如何使用
 1. 首先您需要 Clone 此專案。  
 ```bash
-git clone https://github.com/RotatingPotato/MPR_Model.git
+git clone https://github.com/KageRyo/MPR_Model.git
 ```
 2. 接著您必須安裝所需的函式庫。  
 > 請確保您的裝置中有可使用的 Python 版本。  
