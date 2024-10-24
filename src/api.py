@@ -3,6 +3,7 @@ import pandas as pd
 import joblib
 import traceback
 from fastapi import FastAPI, HTTPException, UploadFile, File, Query
+from loguru import logger
 
 app = FastAPI()
 
@@ -90,46 +91,46 @@ async def get_categories():
 
 # API：水質資料分析每筆資料平均總分數 (POST)
 # http://<apiurl>:8000/score/total/
-@app.post("/score/total/") # 使用 POST 方法處理上傳的 CSV 檔案
+@app.post("/score/total/")
 async def predict_total(file: UploadFile = File(...)):
     try:
-        print("收到前端POST請求")
+        logger.info("收到前端POST請求")
         df = pd.read_csv(file.file)
         df['DO_BOD_ratio'] = np.where(df['BOD'] == 0, 0, df['DO'] / df['BOD'])
         df['BOD_NH3N_product'] = df['BOD'] * df['NH3N']
-        print(df)
-        predictions = predict_scores(df)        # AI機器學習（MPR模型）進行分析
-        result = float(np.mean(predictions))    # 計算平均分數
-        assessment = assess_quality(df)         # 進行個別項目品質評估
-        print(f"Received file: {file.filename}")
-        print(f"Content type: {file.content_type}")
-        print(result)
-        print(assessment)
+        logger.info(f"DataFrame:\n{df}")
+        predictions = predict_scores(df)
+        result = float(np.mean(predictions))
+        assessment = assess_quality(df)
+        logger.info(f"Received file: {file.filename}")
+        logger.info(f"Content type: {file.content_type}")
+        logger.info(f"Result: {result}")
+        logger.info(f"Assessment: {assessment}")
         return {"score": result, "assessment": assessment}
     except Exception as e:
-        traceback.print_exc()
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
 
 # API：水質資料分析每筆資料分數 (POST)
 # http://<apiurl>:8000/score/all/
-@app.post("/score/all/") # 使用 POST 方法處理上傳的 CSV 檔案
+@app.post("/score/all/")
 async def predict_all(file: UploadFile = File(...)):
     try:
-        print("收到前端POST請求")
+        logger.info("收到前端POST請求")
         df = pd.read_csv(file.file)
         df['DO_BOD_ratio'] = np.where(df['BOD'] == 0, 0, df['DO'] / df['BOD'])
         df['BOD_NH3N_product'] = df['BOD'] * df['NH3N']
-        print(df)
-        predictions = predict_scores(df)        # AI機器學習（MPR模型）進行分析
-        result = float(np.mean(predictions))    # 計算平均分數
-        assessment = assess_quality(df)         # 進行個別項目品質評估
-        print(f"Received file: {file.filename}")
-        print(f"Content type: {file.content_type}")
-        print(result)
-        print(assessment)
+        logger.info(f"DataFrame:\n{df}")
+        predictions = predict_scores(df)
+        result = float(np.mean(predictions))
+        assessment = assess_quality(df)
+        logger.info(f"Received file: {file.filename}")
+        logger.info(f"Content type: {file.content_type}")
+        logger.info(f"Result: {result}")
+        logger.info(f"Assessment: {assessment}")
         return {"score": result, "assessment": assessment}
     except Exception as e:
-        traceback.print_exc()
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error processing CSV file: {e}")
 
 # API程式起始點

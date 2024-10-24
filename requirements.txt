@@ -5,3 +5,4 @@ joblib
 python-multipart
 fastapi
 uvicorn
+loguru
