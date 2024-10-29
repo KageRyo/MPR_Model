@@ -40,4 +40,4 @@ python3 main.py
 + 吳國維 Kuo-Wei, Wu [@RRAaru](https://github.com/RRAaru)
 
 ${{\color{orange}{\textsf{本作品為 張健勳 與 吳國維 用於「國立臺中科技大學智慧生產工程系」畢業專題之作品，其著作權由兩人共同擁有。}}}}\$  
-${{\color{yellow}{\textsf{特別感謝「國立臺中科技大學智慧生產工程系」蔡文宗 教授指導。}}}}\$  
+${{\color{yellow}{\textsf{特別感謝「國立臺中科技大學資訊與流通學院」蔡文宗 教授指導。}}}}\$  
