@@ -4,9 +4,9 @@ import pandas as pd
 from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
-from xgboost import XGBRegressor 
+from sklearn.linear_model import LinearRegression
 
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
@@ -30,16 +30,15 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.20, random_state=0
 )
 
-# 創建XGBoost迴歸模型
+# 創建線性迴歸模型
 model = Pipeline([
-    ("poly_features", PolynomialFeatures()),
     ("std_scaler", StandardScaler()),
-    ('xgboost', XGBRegressor()) 
+    ('lr', LinearRegression())
 ])
 
 # 網格搜索參數
 param_grid = {
-    'poly_features__degree': [1 ,2, 3, 4, 5, 6]
+    
 }
 
 # 交叉驗證
@@ -83,4 +82,4 @@ print("Test MAE: ", test_mae)
 print(y_pred)
 
 # 保存模型
-joblib.dump(model, 'modelXGBVer.1.0-50000.pkl')
+joblib.dump(model, 'modelLRVer.1.0-50000.pkl')

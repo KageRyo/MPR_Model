@@ -1,18 +1,18 @@
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error
+from sklearn.metrics import r2_score,root_mean_squared_error,mean_absolute_error
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.impute import SimpleImputer
-from xgboost import XGBRegressor 
+from sklearn.svm import SVR
 
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
 # 讀取水質資料
-dataset = pd.read_csv('data/dataV1_50000.csv')
+dataset = pd.read_csv('data/dataV1_1000.csv')
 print(dataset)
 df = pd.DataFrame(dataset)
 
@@ -30,16 +30,16 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.20, random_state=0
 )
 
-# 創建XGBoost迴歸模型
+# 創建SVM迴歸模型
 model = Pipeline([
     ("poly_features", PolynomialFeatures()),
     ("std_scaler", StandardScaler()),
-    ('xgboost', XGBRegressor()) 
+    ("svm", SVR())
 ])
 
 # 網格搜索參數
 param_grid = {
-    'poly_features__degree': [1 ,2, 3, 4, 5, 6]
+    'poly_features__degree': [1, 2, 3, 4, 5, 6]       # 多項式階數
 }
 
 # 交叉驗證
@@ -51,10 +51,11 @@ grid_search.fit(X_train, y_train)
 # 獲取最佳參數和最佳得分
 best_params = grid_search.best_params_
 best_score = grid_search.best_score_
-print("最佳參數：", best_params, "最佳得分：", best_score)
+print("最佳參數：", best_params)
+print("最佳得分：", best_score)
 
 # 使用最佳參數構建模型
-model.set_params(**best_params)
+model.set_params(**grid_search.best_params_)
 model.fit(X_train, y_train)
 
 # 預測結果
@@ -83,4 +84,4 @@ print("Test MAE: ", test_mae)
 print(y_pred)
 
 # 保存模型
-joblib.dump(model, 'modelXGBVer.1.0-50000.pkl')
+joblib.dump(model, 'modelSVMVer.1.0-1000.pkl')
