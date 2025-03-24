@@ -1,18 +1,18 @@
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error
+from sklearn.metrics import r2_score, root_mean_squared_error, mean_absolute_error
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.impute import SimpleImputer
-from xgboost import XGBRegressor 
+from lightgbm import LGBMRegressor 
 
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
 # 讀取水質資料
-dataset = pd.read_csv('data/dataV1_50000.csv')
+dataset = pd.read_csv('data/dataV1_1000.csv')
 print(dataset)
 df = pd.DataFrame(dataset)
 
@@ -30,11 +30,11 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.20, random_state=0
 )
 
-# 創建XGBoost迴歸模型
+# 創建LightGBM迴歸模型
 model = Pipeline([
     ("poly_features", PolynomialFeatures()),
     ("std_scaler", StandardScaler()),
-    ('xgboost', XGBRegressor()) 
+    ('lightgbm', LGBMRegressor()) 
 ])
 
 # 網格搜索參數
@@ -83,4 +83,4 @@ print("Test MAE: ", test_mae)
 print(y_pred)
 
 # 保存模型
-joblib.dump(model, 'modelXGBVer.1.0-50000.pkl')
+joblib.dump(model, 'modelLGBMVer.1.0-1000.pkl')
