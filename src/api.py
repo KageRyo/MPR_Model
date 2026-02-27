@@ -15,7 +15,7 @@ except Exception as e:
 # 讀取模型
 def load_model():
     try:
-        return joblib.load('models/modelVer.1.4.1.pkl')
+        return joblib.load('models/MPR/modelMPRVer.1.0-50000.pkl')
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="Model file not found")
     except Exception as e:
@@ -78,7 +78,7 @@ async def calculate_percentile(score: float = Query(..., description="The score 
 @app.get("/categories/")
 async def get_categories():
     try:
-        df = pd.read_csv('data/data_v2m.csv')
+        df = pd.read_csv('data/dataV1.csv')
         bins = [0, 15, 30, 50, 70, 85, 100]  # 定義分數範圍的界限
         labels = ['惡劣', '糟糕', '不良', '中等', '良好', '優良']
         df['Category'] = pd.cut(df['Score'], bins=bins, labels=labels, right=False)
@@ -95,10 +95,8 @@ async def predict_total(file: UploadFile = File(...)):
     try:
         print("收到前端POST請求")
         df = pd.read_csv(file.file)
-        df['DO_BOD_ratio'] = np.where(df['BOD'] == 0, 0, df['DO'] / df['BOD'])
-        df['BOD_NH3N_product'] = df['BOD'] * df['NH3N']
         print(df)
-        predictions = predict_scores(df)        # AI機器學習（MPR模型）進行分析
+        predictions = predict_scores(df.drop(columns=['Score'], errors='ignore'))  # AI機器學習（MPR模型）進行分析
         result = float(np.mean(predictions))    # 計算平均分數
         assessment = assess_quality(df)         # 進行個別項目品質評估
         print(f"Received file: {file.filename}")
@@ -117,10 +115,8 @@ async def predict_all(file: UploadFile = File(...)):
     try:
         print("收到前端POST請求")
         df = pd.read_csv(file.file)
-        df['DO_BOD_ratio'] = np.where(df['BOD'] == 0, 0, df['DO'] / df['BOD'])
-        df['BOD_NH3N_product'] = df['BOD'] * df['NH3N']
         print(df)
-        predictions = predict_scores(df)        # AI機器學習（MPR模型）進行分析
+        predictions = predict_scores(df.drop(columns=['Score'], errors='ignore'))  # AI機器學習（MPR模型）進行分析
         result = float(np.mean(predictions))    # 計算平均分數
         assessment = assess_quality(df)         # 進行個別項目品質評估
         print(f"Received file: {file.filename}")
