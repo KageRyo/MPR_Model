@@ -8,7 +8,7 @@ app = FastAPI()
 
 # 在記憶體中緩存整個母體資料集的分數
 try:
-    all_scores = pd.read_csv('data/data_v2m.csv')['Score']
+    all_scores = pd.read_csv('data/dataV1.csv')['Score']
 except Exception as e:
     raise HTTPException(status_code=500, detail=f"Error loading data: {e}")
 
