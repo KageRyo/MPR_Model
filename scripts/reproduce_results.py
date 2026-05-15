@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import argparse
 import csv
+import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import yaml
-from sklearn.compose import TransformedTargetRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
@@ -23,6 +23,10 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.svm import SVR
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.settings import FEATURE_COLUMNS
 from src.wqi import categorize_score, direct_wqi5_score
@@ -41,6 +45,10 @@ except ImportError:  # pragma: no cover
 def nmae(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     denom = np.max(y_true) - np.min(y_true)
     return float(mean_absolute_error(y_true, y_pred) / denom) if denom else 0.0
+
+
+def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    return float(np.sqrt(mean_squared_error(y_true, y_pred)))
 
 
 def build_model(model_type: str):
@@ -108,6 +116,13 @@ def build_model(model_type: str):
     raise ValueError(f"Unsupported model_type: {model_type}")
 
 
+def require_model_support(model_type: str) -> None:
+    if model_type == "xgboost" and XGBRegressor is None:
+        raise ImportError("xgboost is not installed but is required by the current experiment config.")
+    if model_type == "lightgbm" and LGBMRegressor is None:
+        raise ImportError("lightgbm is not installed but is required by the current experiment config.")
+
+
 def score_to_category(values: np.ndarray) -> list[str]:
     return [categorize_score(value)[0] for value in values]
 
@@ -119,7 +134,7 @@ def evaluate_predictions(model_type: str, y_true: np.ndarray, y_pred: np.ndarray
         "model_type": model_type,
         "r2": r2_score(y_true, y_pred),
         "mae": mean_absolute_error(y_true, y_pred),
-        "rmse": mean_squared_error(y_true, y_pred, squared=False),
+        "rmse": rmse(y_true, y_pred),
         "nmae": nmae(y_true, y_pred),
         "accuracy": accuracy_score(y_true_cat, y_pred_cat),
         "macro_f1": f1_score(y_true_cat, y_pred_cat, average="macro"),
@@ -145,12 +160,13 @@ def main() -> None:
     args = parser.parse_args()
 
     config_path = Path(args.config)
-    project_root = config_path.resolve().parents[1]
     with config_path.open("r", encoding="utf-8") as handle:
         config = yaml.safe_load(handle)
 
-    data_path = project_root / config["dataset"]
-    output_dir = project_root / config["output_dir"]
+    data_path = (PROJECT_ROOT / config["dataset"]).resolve()
+    output_dir = (PROJECT_ROOT / config["output_dir"]).resolve()
+    if not data_path.exists():
+        raise FileNotFoundError(f"Configured dataset does not exist: {data_path}")
     frame = pd.read_csv(data_path)
     frame["wqi5_category"] = frame["Score"].apply(lambda value: categorize_score(value)[0])
 
@@ -162,6 +178,7 @@ def main() -> None:
     category_rows: list[dict] = []
 
     for seed in config["seeds"]:
+        print(f"[reproduce_results] seed={seed}: preparing stratified split")
         splitter = StratifiedShuffleSplit(
             n_splits=1,
             test_size=config["test_size"],
@@ -174,6 +191,7 @@ def main() -> None:
         y_test = y[test_idx]
 
         for model_type in config["models"]:
+            print(f"[reproduce_results] seed={seed}: running model={model_type}")
             if model_type == "direct_wqi5":
                 started = time.perf_counter()
                 y_pred = np.array(
@@ -190,9 +208,8 @@ def main() -> None:
                 )
                 latency_s = time.perf_counter() - started
             else:
+                require_model_support(model_type)
                 estimator = build_model(model_type)
-                if estimator is None:
-                    continue
                 started = time.perf_counter()
                 estimator.fit(X_train, y_train)
                 y_pred = estimator.predict(X_test)
@@ -211,7 +228,7 @@ def main() -> None:
                         "category": category,
                         "count": int(mask.sum()),
                         "mae": mean_absolute_error(y_test[mask], y_pred[mask]),
-                        "rmse": mean_squared_error(y_test[mask], y_pred[mask], squared=False),
+                        "rmse": rmse(y_test[mask], y_pred[mask]),
                     }
                 )
 
@@ -245,6 +262,7 @@ def main() -> None:
     write_csv(output_dir / "metrics_summary.csv", summary_rows)
     write_csv(output_dir / "residual_statistics.csv", residual_rows)
     write_csv(output_dir / "category_metrics.csv", category_rows)
+    print(f"[reproduce_results] completed. Outputs written to: {output_dir}")
 
 
 if __name__ == "__main__":
