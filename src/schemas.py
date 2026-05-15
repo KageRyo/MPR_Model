@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Literal
-
 from pydantic import BaseModel, Field
 
-ModelType = Literal["direct_wqi5", "mpr", "rf", "xgboost", "lightgbm", "svm", "lr"]
+from .enums import ModelType
 
 
 class PredictionRequest(BaseModel):
@@ -13,14 +11,14 @@ class PredictionRequest(BaseModel):
     NH3N: float = Field(..., description="Ammonia nitrogen in mg/L.")
     EC: float = Field(..., description="Electrical conductivity in umho/cm.")
     SS: float = Field(..., description="Suspended solids in mg/L.")
-    model_type: ModelType = "direct_wqi5"
+    model_type: ModelType = ModelType.DIRECT_WQI5
 
 
 class PredictionResponse(BaseModel):
     score: float
     category: str
     rating_range: str
-    model_type: str
+    model_type: ModelType
     latency_ms: float
     assessment: dict[str, str]
     warnings: list[str]
@@ -29,4 +27,4 @@ class PredictionResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     message: str
-    default_model: str
+    default_model: ModelType

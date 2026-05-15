@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, File, Form, UploadFile
 
+from .enums import ModelType
 from .schemas import HealthResponse, PredictionRequest, PredictionResponse
 from .services import WaterQualityService
 
@@ -59,7 +60,7 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
 @app.post("/score/total/", response_model=PredictionResponse)
 async def predict_total(
     file: UploadFile = File(...),
-    model_type: str | None = Form(default=None),
+    model_type: ModelType | None = Form(default=None),
 ) -> PredictionResponse:
     return service.predict_csv_mean(file, model_type=model_type)
 
@@ -67,6 +68,6 @@ async def predict_total(
 @app.post("/score/all/")
 async def predict_all(
     file: UploadFile = File(...),
-    model_type: str | None = Form(default=None),
+    model_type: ModelType | None = Form(default=None),
 ) -> dict:
     return service.predict_csv_all(file, model_type=model_type)

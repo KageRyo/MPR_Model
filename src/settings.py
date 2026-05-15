@@ -4,13 +4,15 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from .enums import ModelType
+
 
 @dataclass(frozen=True)
 class Settings:
     project_root: Path = Path(__file__).resolve().parents[1]
     data_dir: Path = project_root / "data"
     model_dir: Path = project_root / os.getenv("MODEL_DIR", "models")
-    default_model: str = os.getenv("DEFAULT_MODEL", "direct_wqi5")
+    default_model: ModelType = ModelType(os.getenv("DEFAULT_MODEL", "direct_wqi5"))
     api_host: str = os.getenv("API_HOST", "0.0.0.0")
     api_port: int = int(os.getenv("API_PORT", "8001"))
     dataset_path: Path = data_dir / os.getenv("DATASET_FILE", "dataV1.csv")
@@ -20,13 +22,13 @@ class Settings:
 
 FEATURE_COLUMNS = ["DO", "BOD", "NH3N", "EC", "SS"]
 
-MODEL_DIR_NAMES = {
-    "lr": "LR",
-    "mpr": "MPR",
-    "svm": "SVM",
-    "rf": "RF",
-    "xgboost": "XGBoost",
-    "lightgbm": "LightGBM",
+MODEL_DIR_NAMES: dict[ModelType, str] = {
+    ModelType.LR: "LR",
+    ModelType.MPR: "MPR",
+    ModelType.SVM: "SVM",
+    ModelType.RF: "RF",
+    ModelType.XGBOOST: "XGBoost",
+    ModelType.LIGHTGBM: "LightGBM",
 }
 
 CATEGORY_BANDS = [

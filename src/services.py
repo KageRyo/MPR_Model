@@ -9,6 +9,7 @@ import joblib
 import pandas as pd
 from fastapi import HTTPException, UploadFile
 
+from .enums import ModelType
 from .schemas import PredictionRequest, PredictionResponse
 from .settings import FEATURE_COLUMNS, MODEL_DIR_NAMES, Settings
 from .wqi import assess_indicator_quality, categorize_score, direct_wqi5_score
@@ -16,7 +17,7 @@ from .wqi import assess_indicator_quality, categorize_score, direct_wqi5_score
 
 @dataclass
 class ModelMetadata:
-    model_type: str
+    model_type: ModelType
     available: bool
     artifact_path: str | None
 
@@ -57,14 +58,14 @@ class WaterQualityService:
                 warnings.append(f"{key}={value} is outside the recommended range [{lower}, {upper}].")
         return warnings
 
-    def _artifact_candidates(self, model_type: str) -> list[Path]:
+    def _artifact_candidates(self, model_type: ModelType) -> list[Path]:
         directory_name = MODEL_DIR_NAMES[model_type]
         directory = self.settings.model_dir / directory_name
         if not directory.exists():
             return []
         return sorted(directory.glob("*.pkl"))
 
-    def _pick_artifact(self, model_type: str) -> Path | None:
+    def _pick_artifact(self, model_type: ModelType) -> Path | None:
         candidates = self._artifact_candidates(model_type)
         if not candidates:
             return None
@@ -73,7 +74,7 @@ class WaterQualityService:
             return preferred[-1]
         return candidates[-1]
 
-    def _load_model(self, model_type: str):
+    def _load_model(self, model_type: ModelType):
         if model_type not in MODEL_DIR_NAMES:
             raise HTTPException(status_code=400, detail=f"Unsupported model_type: {model_type}")
         if model_type not in self._models:
@@ -85,7 +86,11 @@ class WaterQualityService:
 
     def list_models(self) -> list[dict]:
         models: list[dict] = [
-            {"model_type": "direct_wqi5", "available": True, "artifact_path": None},
+            {
+                "model_type": ModelType.DIRECT_WQI5,
+                "available": True,
+                "artifact_path": None,
+            },
         ]
         for model_type in MODEL_DIR_NAMES:
             artifact = self._pick_artifact(model_type)
@@ -113,7 +118,7 @@ class WaterQualityService:
             distribution.append({"category": label, "rating": counts.get(label, 0)})
         return distribution
 
-    def _build_response(self, score: float, record: dict[str, float], model_type: str, latency_ms: float) -> PredictionResponse:
+    def _build_response(self, score: float, record: dict[str, float], model_type: ModelType, latency_ms: float) -> PredictionResponse:
         category, rating_range = categorize_score(score)
         assessment = {column: assess_indicator_quality(column, float(record[column])) for column in FEATURE_COLUMNS}
         warnings = self._validate_record(record)
@@ -129,9 +134,9 @@ class WaterQualityService:
 
     def predict_single(self, request: PredictionRequest) -> PredictionResponse:
         record = request.model_dump()
-        model_type = record.pop("model_type")
+        model_type: ModelType = record.pop("model_type")
         start = time.perf_counter()
-        if model_type == "direct_wqi5":
+        if model_type == ModelType.DIRECT_WQI5:
             score = direct_wqi5_score(
                 do=record["DO"],
                 bod=record["BOD"],
@@ -160,11 +165,11 @@ class WaterQualityService:
             )
         return frame
 
-    def predict_csv_mean(self, upload_file: UploadFile, model_type: str | None = None) -> PredictionResponse:
+    def predict_csv_mean(self, upload_file: UploadFile, model_type: ModelType | None = None) -> PredictionResponse:
         frame = self._load_csv(upload_file)
         model_name = model_type or self.settings.default_model
         start = time.perf_counter()
-        if model_name == "direct_wqi5":
+        if model_name == ModelType.DIRECT_WQI5:
             predictions = frame[FEATURE_COLUMNS].apply(
                 lambda row: direct_wqi5_score(
                     do=row["DO"],
@@ -183,11 +188,11 @@ class WaterQualityService:
         representative_record = frame[FEATURE_COLUMNS].mean().to_dict()
         return self._build_response(score, representative_record, model_name, latency_ms)
 
-    def predict_csv_all(self, upload_file: UploadFile, model_type: str | None = None) -> dict:
+    def predict_csv_all(self, upload_file: UploadFile, model_type: ModelType | None = None) -> dict:
         frame = self._load_csv(upload_file)
         model_name = model_type or self.settings.default_model
         start = time.perf_counter()
-        if model_name == "direct_wqi5":
+        if model_name == ModelType.DIRECT_WQI5:
             predictions = frame[FEATURE_COLUMNS].apply(
                 lambda row: direct_wqi5_score(
                     do=row["DO"],
