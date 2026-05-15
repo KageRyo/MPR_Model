@@ -9,11 +9,12 @@ from sklearn.impute import SimpleImputer
 from sklearn.ensemble import RandomForestRegressor
 
 import sys
+from loguru import logger
 sys.stdout.reconfigure(encoding='utf-8')
 
 # 讀取水質資料
 dataset = pd.read_csv('data/dataV1_10000.csv')
-print(dataset)
+logger.info(dataset)
 df = pd.DataFrame(dataset)
 
 # 以平均值填補缺失值
@@ -51,7 +52,7 @@ grid_search.fit(X_train, y_train)
 # 獲取最佳參數和最佳得分
 best_params = grid_search.best_params_
 best_score = grid_search.best_score_
-print("最佳參數：", best_params, "最佳得分：", best_score)
+logger.info("最佳參數：", best_params, "最佳得分：", best_score)
 
 # 使用最佳參數構建模型
 model.set_params(**best_params)
@@ -66,21 +67,21 @@ test_preds = model.predict(X_test)
 
 train_r2 = r2_score(y_train, train_preds)
 test_r2 = r2_score(y_test, test_preds)
-print("Train R2: ", train_r2)
-print("Test R2: ", test_r2)
+logger.info("Train R2: ", train_r2)
+logger.info("Test R2: ", test_r2)
 
 train_rmse = root_mean_squared_error(y_train, train_preds)
 test_rmse = root_mean_squared_error(y_test, test_preds)
-print("Train RMSE: ", train_rmse)
-print("Test RMSE: ", test_rmse)
+logger.info("Train RMSE: ", train_rmse)
+logger.info("Test RMSE: ", test_rmse)
 
 train_mae = mean_absolute_error(y_train, train_preds)
 test_mae = mean_absolute_error(y_test, test_preds)
-print("Train MAE: ", train_mae)
-print("Test MAE: ", test_mae)
+logger.info("Train MAE: ", train_mae)
+logger.info("Test MAE: ", test_mae)
 
 # 查看預測結果
-print(y_pred)
+logger.info(y_pred)
 
 # 保存模型
 joblib.dump(model, 'modelRFVer.1.0-10000.pkl')

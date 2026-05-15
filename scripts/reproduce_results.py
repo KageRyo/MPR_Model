@@ -7,6 +7,8 @@ import sys
 import time
 from pathlib import Path
 
+from loguru import logger
+
 import numpy as np
 import pandas as pd
 import yaml
@@ -196,7 +198,7 @@ def main() -> None:
     category_rows: list[dict] = []
 
     for seed in config["seeds"]:
-        print(f"[reproduce_results] seed={seed}: preparing stratified split")
+        logger.info(f"seed={seed}: preparing stratified split")
         splitter = StratifiedShuffleSplit(
             n_splits=1,
             test_size=config["test_size"],
@@ -209,7 +211,7 @@ def main() -> None:
         y_test = y[test_idx]
 
         for model_type in config["models"]:
-            print(f"[reproduce_results] seed={seed}: running model={model_type}")
+            logger.info(f"seed={seed}: running model={model_type}")
             if model_type == "direct_wqi5":
                 started = time.perf_counter()
                 y_pred = np.array(
@@ -280,7 +282,7 @@ def main() -> None:
     write_csv(output_dir / "metrics_summary.csv", summary_rows)
     write_csv(output_dir / "residual_statistics.csv", residual_rows)
     write_csv(output_dir / "category_metrics.csv", category_rows)
-    print(f"[reproduce_results] completed. Outputs written to: {output_dir}")
+    logger.success(f"completed. Outputs written to: {output_dir}")
 
 
 if __name__ == "__main__":
