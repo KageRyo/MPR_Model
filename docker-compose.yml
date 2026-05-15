@@ -1,0 +1,9 @@
+version: "3.9"
+
+services:
+  wq-surrogate-models:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "8001:8001"
