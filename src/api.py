@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 
 from .enums import ModelType
 from .schemas import HealthResponse, PredictionRequest, PredictionResponse
@@ -16,6 +19,16 @@ app = FastAPI(
         "WQI5-based current-state water quality assessment backend. "
         "Supports a direct WQI5 baseline and surrogate regression models."
     ),
+)
+
+# CORS configuration for WaterMirror frontend
+cors_origins = os.getenv("CORS_ALLOW_ORIGINS", "*").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[origin.strip() for origin in cors_origins if origin.strip()],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
