@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -154,9 +155,25 @@ def write_csv(path: Path, rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
+def resolve_output_dir(base_output_dir: Path, overwrite: bool) -> Path:
+    if base_output_dir.exists():
+        existing_csvs = list(base_output_dir.glob("*.csv"))
+        if existing_csvs and not overwrite:
+            raise FileExistsError(
+                f"Output directory already contains CSV results: {base_output_dir}. "
+                "Use --output-dir to write elsewhere or pass --overwrite explicitly."
+            )
+        if overwrite and base_output_dir.exists():
+            shutil.rmtree(base_output_dir)
+    base_output_dir.mkdir(parents=True, exist_ok=True)
+    return base_output_dir
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/experiment_config.yaml")
+    parser.add_argument("--output-dir", default=None)
+    parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
     config_path = Path(args.config)
@@ -164,7 +181,8 @@ def main() -> None:
         config = yaml.safe_load(handle)
 
     data_path = (PROJECT_ROOT / config["dataset"]).resolve()
-    output_dir = (PROJECT_ROOT / config["output_dir"]).resolve()
+    configured_output_dir = args.output_dir or config["output_dir"]
+    output_dir = resolve_output_dir((PROJECT_ROOT / configured_output_dir).resolve(), overwrite=args.overwrite)
     if not data_path.exists():
         raise FileNotFoundError(f"Configured dataset does not exist: {data_path}")
     frame = pd.read_csv(data_path)
