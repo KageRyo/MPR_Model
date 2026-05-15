@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wqsurrogatemodels"
+version = "2.0.0"
+description = "WQI5-based current-state water quality assessment backend for WaterMirror."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+  { name = "kageryo", email = "kageryo@coderyo.com" }
+]
+dependencies = [
+  "fastapi",
+  "joblib",
+  "lightgbm",
+  "numpy",
+  "pandas",
+  "python-dotenv",
+  "python-multipart",
+  "pyyaml",
+  "scikit-learn==1.3.2",
+  "uvicorn",
+  "xgboost",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+]
+
+[tool.setuptools.packages.find]
+include = ["src*"]
