@@ -1,0 +1,17 @@
+dataset: data/dataV1.csv
+output_dir: results
+test_size: 0.2
+seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+models:
+  - direct_wqi5
+  - lr
+  - mpr
+  - svm
+  - rf
+  - xgboost
+  - lightgbm
