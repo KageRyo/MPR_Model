@@ -4,7 +4,18 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from .enums import ModelTypeEnum
+
+load_dotenv()
+
+
+def parse_bool_env(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 @dataclass(frozen=True)
@@ -15,6 +26,7 @@ class Settings:
     default_model: ModelTypeEnum = ModelTypeEnum(os.getenv("DEFAULT_MODEL", "direct_wqi5"))
     api_host: str = os.getenv("API_HOST", "0.0.0.0")
     api_port: int = int(os.getenv("API_PORT", "8001"))
+    auto_port: bool = parse_bool_env("AUTO_PORT", default=False)
     dataset_path: Path = data_dir / os.getenv("DATASET_FILE", "dataV1.csv")
     preferred_artifact_size: str = os.getenv("MODEL_ARTIFACT_SIZE", "50000")
     request_timeout_ms: int = int(os.getenv("REQUEST_TIMEOUT_MS", "10000"))
