@@ -10,7 +10,7 @@ import pandas as pd
 from fastapi import HTTPException, UploadFile
 
 from .enums import ModelType
-from .schemas import PredictionRequest, PredictionResponse
+from .schemas import AssessmentRequest, AssessmentResponse
 from .settings import FEATURE_COLUMNS, MODEL_DIR_NAMES, Settings
 from .wqi import assess_indicator_quality, categorize_score, direct_wqi5_score
 
@@ -118,11 +118,11 @@ class WaterQualityService:
             distribution.append({"category": label, "rating": counts.get(label, 0)})
         return distribution
 
-    def _build_response(self, score: float, record: dict[str, float], model_type: ModelType, latency_ms: float) -> PredictionResponse:
+    def _build_response(self, score: float, record: dict[str, float], model_type: ModelType, latency_ms: float) -> AssessmentResponse:
         category, rating_range = categorize_score(score)
         assessment = {column: assess_indicator_quality(column, float(record[column])) for column in FEATURE_COLUMNS}
         warnings = self._validate_record(record)
-        return PredictionResponse(
+        return AssessmentResponse(
             score=round(float(score), 3),
             category=category,
             rating_range=rating_range,
@@ -132,7 +132,7 @@ class WaterQualityService:
             warnings=warnings,
         )
 
-    def predict_single(self, request: PredictionRequest) -> PredictionResponse:
+    def assess_single(self, request: AssessmentRequest) -> AssessmentResponse:
         record = request.model_dump()
         model_type: ModelType = record.pop("model_type")
         start = time.perf_counter()
@@ -165,7 +165,7 @@ class WaterQualityService:
             )
         return frame
 
-    def predict_csv_mean(self, upload_file: UploadFile, model_type: ModelType | None = None) -> PredictionResponse:
+    def assess_csv_summary(self, upload_file: UploadFile, model_type: ModelType | None = None) -> AssessmentResponse:
         frame = self._load_csv(upload_file)
         model_name = model_type or self.settings.default_model
         start = time.perf_counter()
@@ -188,7 +188,7 @@ class WaterQualityService:
         representative_record = frame[FEATURE_COLUMNS].mean().to_dict()
         return self._build_response(score, representative_record, model_name, latency_ms)
 
-    def predict_csv_all(self, upload_file: UploadFile, model_type: ModelType | None = None) -> dict:
+    def assess_csv_rows(self, upload_file: UploadFile, model_type: ModelType | None = None) -> dict:
         frame = self._load_csv(upload_file)
         model_name = model_type or self.settings.default_model
         start = time.perf_counter()

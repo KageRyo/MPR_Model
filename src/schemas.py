@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from .enums import ModelType
 
 
-class PredictionRequest(BaseModel):
+class AssessmentRequest(BaseModel):
     DO: float = Field(..., description="Dissolved oxygen saturation percentage.")
     BOD: float = Field(..., description="Biochemical oxygen demand in mg/L.")
     NH3N: float = Field(..., description="Ammonia nitrogen in mg/L.")
@@ -14,7 +14,7 @@ class PredictionRequest(BaseModel):
     model_type: ModelType = ModelType.DIRECT_WQI5
 
 
-class PredictionResponse(BaseModel):
+class AssessmentResponse(BaseModel):
     score: float
     category: str
     rating_range: str
