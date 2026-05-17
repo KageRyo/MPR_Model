@@ -5,8 +5,8 @@ import os
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from .enums import ModelType
-from .schemas import AssessmentRequest, AssessmentResponse, HealthResponse
+from .enums import ModelTypeEnum
+from .schemas import AssessmentRequestSchema, AssessmentResponseSchema, HealthResponseSchema
 from .services import WaterQualityService
 
 service = WaterQualityService()
@@ -34,9 +34,9 @@ app.add_middleware(
 )
 
 
-@app.get("/", response_model=HealthResponse)
-async def read_root() -> HealthResponse:
-    return HealthResponse(
+@app.get("/", response_model=HealthResponseSchema)
+async def read_root() -> HealthResponseSchema:
+    return HealthResponseSchema(
         status="ok",
         message="WQSurrogateModels assessment backend is reachable.",
         default_model=service.settings.default_model,
@@ -48,9 +48,9 @@ async def read_root() -> HealthResponse:
 # -----------------------------------------------------------------------------
 
 
-@app.get("/api/v2/health", response_model=HealthResponse, tags=["v2"])
-async def health_v2() -> HealthResponse:
-    return HealthResponse(
+@app.get("/api/v2/health", response_model=HealthResponseSchema, tags=["v2"])
+async def health_v2() -> HealthResponseSchema:
+    return HealthResponseSchema(
         status="ok",
         message="WQSurrogateModels v2 is healthy.",
         default_model=service.settings.default_model,
@@ -72,23 +72,23 @@ async def categories_v2() -> dict:
     return {"data": service.category_distribution()}
 
 
-@app.post("/api/v2/assessment", response_model=AssessmentResponse, tags=["v2"])
-async def assess(request: AssessmentRequest) -> AssessmentResponse:
+@app.post("/api/v2/assessment", response_model=AssessmentResponseSchema, tags=["v2"])
+async def assess(request: AssessmentRequestSchema) -> AssessmentResponseSchema:
     return service.assess_single(request)
 
 
-@app.post("/api/v2/assessment/csv/summary", response_model=AssessmentResponse, tags=["v2"])
+@app.post("/api/v2/assessment/csv/summary", response_model=AssessmentResponseSchema, tags=["v2"])
 async def assess_csv_summary(
     file: UploadFile = File(...),
-    model_type: ModelType | None = Form(default=None),
-) -> AssessmentResponse:
+    model_type: ModelTypeEnum | None = Form(default=None),
+) -> AssessmentResponseSchema:
     return service.assess_csv_summary(file, model_type=model_type)
 
 
 @app.post("/api/v2/assessment/csv/rows", tags=["v2"])
 async def assess_csv_rows(
     file: UploadFile = File(...),
-    model_type: ModelType | None = Form(default=None),
+    model_type: ModelTypeEnum | None = Form(default=None),
 ) -> dict:
     return service.assess_csv_rows(file, model_type=model_type)
 
@@ -100,10 +100,10 @@ async def assess_csv_rows(
 # -----------------------------------------------------------------------------
 
 
-@app.get("/status", response_model=HealthResponse, deprecated=True)
-async def status() -> HealthResponse:
+@app.get("/status", response_model=HealthResponseSchema, deprecated=True)
+async def status() -> HealthResponseSchema:
     """Deprecated: Use GET /api/v2/health instead."""
-    return HealthResponse(
+    return HealthResponseSchema(
         status="ok",
         message="Service healthy. (deprecated endpoint)",
         default_model=service.settings.default_model,
@@ -128,17 +128,17 @@ async def categories() -> dict:
     return {"data": service.category_distribution()}
 
 
-@app.post("/predict", response_model=AssessmentResponse, deprecated=True)
-async def predict(request: AssessmentRequest) -> AssessmentResponse:
+@app.post("/predict", response_model=AssessmentResponseSchema, deprecated=True)
+async def predict(request: AssessmentRequestSchema) -> AssessmentResponseSchema:
     """Deprecated: Use POST /api/v2/assessment instead."""
     return service.assess_single(request)
 
 
-@app.post("/score/total/", response_model=AssessmentResponse, deprecated=True)
+@app.post("/score/total/", response_model=AssessmentResponseSchema, deprecated=True)
 async def predict_total(
     file: UploadFile = File(...),
-    model_type: ModelType | None = Form(default=None),
-) -> AssessmentResponse:
+    model_type: ModelTypeEnum | None = Form(default=None),
+) -> AssessmentResponseSchema:
     """Deprecated: Use POST /api/v2/assessment/csv/summary instead."""
     return service.assess_csv_summary(file, model_type=model_type)
 
@@ -146,7 +146,7 @@ async def predict_total(
 @app.post("/score/all/", deprecated=True)
 async def predict_all(
     file: UploadFile = File(...),
-    model_type: ModelType | None = Form(default=None),
+    model_type: ModelTypeEnum | None = Form(default=None),
 ) -> dict:
     """Deprecated: Use POST /api/v2/assessment/csv/rows instead."""
     return service.assess_csv_rows(file, model_type=model_type)

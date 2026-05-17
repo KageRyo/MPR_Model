@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from .enums import ModelType
+from .enums import ModelTypeEnum
 
 
 @dataclass(frozen=True)
@@ -12,7 +12,7 @@ class Settings:
     project_root: Path = Path(__file__).resolve().parents[1]
     data_dir: Path = project_root / "data"
     model_dir: Path = project_root / os.getenv("MODEL_DIR", "models")
-    default_model: ModelType = ModelType(os.getenv("DEFAULT_MODEL", "direct_wqi5"))
+    default_model: ModelTypeEnum = ModelTypeEnum(os.getenv("DEFAULT_MODEL", "direct_wqi5"))
     api_host: str = os.getenv("API_HOST", "0.0.0.0")
     api_port: int = int(os.getenv("API_PORT", "8001"))
     dataset_path: Path = data_dir / os.getenv("DATASET_FILE", "dataV1.csv")
@@ -22,13 +22,13 @@ class Settings:
 
 FEATURE_COLUMNS = ["DO", "BOD", "NH3N", "EC", "SS"]
 
-MODEL_DIR_NAMES: dict[ModelType, str] = {
-    ModelType.LR: "LR",
-    ModelType.MPR: "MPR",
-    ModelType.SVM: "SVM",
-    ModelType.RF: "RF",
-    ModelType.XGBOOST: "XGBoost",
-    ModelType.LIGHTGBM: "LightGBM",
+MODEL_DIR_NAMES: dict[ModelTypeEnum, str] = {
+    ModelTypeEnum.LR: "LR",
+    ModelTypeEnum.MPR: "MPR",
+    ModelTypeEnum.SVM: "SVM",
+    ModelTypeEnum.RF: "RF",
+    ModelTypeEnum.XGBOOST: "XGBoost",
+    ModelTypeEnum.LIGHTGBM: "LightGBM",
 }
 
 CATEGORY_BANDS = [

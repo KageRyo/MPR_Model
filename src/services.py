@@ -9,15 +9,15 @@ import joblib
 import pandas as pd
 from fastapi import HTTPException, UploadFile
 
-from .enums import ModelType
-from .schemas import AssessmentRequest, AssessmentResponse
+from .enums import ModelTypeEnum
+from .schemas import AssessmentRequestSchema, AssessmentResponseSchema
 from .settings import FEATURE_COLUMNS, MODEL_DIR_NAMES, Settings
 from .wqi import assess_indicator_quality, categorize_score, direct_wqi5_score
 
 
 @dataclass
 class ModelMetadata:
-    model_type: ModelType
+    model_type: ModelTypeEnum
     available: bool
     artifact_path: str | None
 
@@ -87,7 +87,7 @@ class WaterQualityService:
     def list_models(self) -> list[dict]:
         models: list[dict] = [
             {
-                "model_type": ModelType.DIRECT_WQI5,
+                "model_type": ModelTypeEnum.DIRECT_WQI5,
                 "available": True,
                 "artifact_path": None,
             },
@@ -118,11 +118,11 @@ class WaterQualityService:
             distribution.append({"category": label, "rating": counts.get(label, 0)})
         return distribution
 
-    def _build_response(self, score: float, record: dict[str, float], model_type: ModelType, latency_ms: float) -> AssessmentResponse:
+    def _build_response(self, score: float, record: dict[str, float], model_type: ModelTypeEnum, latency_ms: float) -> AssessmentResponseSchema:
         category, rating_range = categorize_score(score)
         assessment = {column: assess_indicator_quality(column, float(record[column])) for column in FEATURE_COLUMNS}
         warnings = self._validate_record(record)
-        return AssessmentResponse(
+        return AssessmentResponseSchema(
             score=round(float(score), 3),
             category=category,
             rating_range=rating_range,
@@ -132,11 +132,11 @@ class WaterQualityService:
             warnings=warnings,
         )
 
-    def assess_single(self, request: AssessmentRequest) -> AssessmentResponse:
+    def assess_single(self, request: AssessmentRequestSchema) -> AssessmentResponseSchema:
         record = request.model_dump()
-        model_type: ModelType = record.pop("model_type")
+        model_type: ModelTypeEnum = record.pop("model_type")
         start = time.perf_counter()
-        if model_type == ModelType.DIRECT_WQI5:
+        if model_type == ModelTypeEnum.DIRECT_WQI5:
             score = direct_wqi5_score(
                 do=record["DO"],
                 bod=record["BOD"],
@@ -165,11 +165,11 @@ class WaterQualityService:
             )
         return frame
 
-    def assess_csv_summary(self, upload_file: UploadFile, model_type: ModelType | None = None) -> AssessmentResponse:
+    def assess_csv_summary(self, upload_file: UploadFile, model_type: ModelTypeEnum | None = None) -> AssessmentResponseSchema:
         frame = self._load_csv(upload_file)
         model_name = model_type or self.settings.default_model
         start = time.perf_counter()
-        if model_name == ModelType.DIRECT_WQI5:
+        if model_name == ModelTypeEnum.DIRECT_WQI5:
             predictions = frame[FEATURE_COLUMNS].apply(
                 lambda row: direct_wqi5_score(
                     do=row["DO"],
@@ -188,11 +188,11 @@ class WaterQualityService:
         representative_record = frame[FEATURE_COLUMNS].mean().to_dict()
         return self._build_response(score, representative_record, model_name, latency_ms)
 
-    def assess_csv_rows(self, upload_file: UploadFile, model_type: ModelType | None = None) -> dict:
+    def assess_csv_rows(self, upload_file: UploadFile, model_type: ModelTypeEnum | None = None) -> dict:
         frame = self._load_csv(upload_file)
         model_name = model_type or self.settings.default_model
         start = time.perf_counter()
-        if model_name == ModelType.DIRECT_WQI5:
+        if model_name == ModelTypeEnum.DIRECT_WQI5:
             predictions = frame[FEATURE_COLUMNS].apply(
                 lambda row: direct_wqi5_score(
                     do=row["DO"],

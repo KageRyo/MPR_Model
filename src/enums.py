@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 
 
-class ModelType(str, Enum):
+class ModelTypeEnum(str, Enum):
     """Supported model types for WQI5 assessment."""
 
     DIRECT_WQI5 = "direct_wqi5"
