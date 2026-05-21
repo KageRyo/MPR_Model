@@ -162,3 +162,7 @@ cython_debug/
 # Generated experiment outputs
 results/
 results_*/
+
+# Generated statistical-analysis outputs
+statistics/整理.xlsx
+statistics/outputs/
