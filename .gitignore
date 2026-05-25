@@ -166,3 +166,17 @@ results_*/
 # Generated statistical-analysis outputs
 statistics/整理.xlsx
 statistics/outputs/
+!statistics/outputs/
+statistics/outputs/*
+!statistics/outputs/metric_ci_by_runs.csv
+!statistics/outputs/paired_tests_by_runs.csv
+!statistics/outputs/test_prediction_metrics.csv
+!statistics/outputs/test_bootstrap_ci.csv
+!statistics/outputs/test_paired_error_tests.csv
+!statistics/outputs/residual_diagnostics.csv
+!statistics/outputs/error_by_wqi_band.csv
+!statistics/outputs/dataset_distribution_robustness.csv
+!statistics/outputs/sample_size_stability.csv
+!statistics/outputs/statistical_analysis_report.md
+!statistics/outputs/figures/
+!statistics/outputs/figures/*.png
