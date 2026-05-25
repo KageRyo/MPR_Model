@@ -152,7 +152,7 @@ def band_error_table(bands: pd.DataFrame) -> str:
             {
                 "Actual WQI band": row["actual_wqi_band"],
                 "Lowest-MAE model": row["model"],
-                "n": int(row["n"]),
+                "Evaluation records (n)": int(row["n"]),
                 "MAE": fmt(row["mae"]),
                 "RMSE": fmt(row["rmse"]),
                 "Bias": fmt(row["bias"]),
@@ -173,7 +173,7 @@ def write_report() -> None:
     present_bands = set(band_errors["actual_wqi_band"].unique())
     missing_bands = [band for band in WQI_BAND_ORDER if band not in present_bands]
     missing_band_note = (
-        f" The 10,714-record hold-out set contains no {', '.join(missing_bands)} rows."
+        f" The 10,714-record inference evaluation set contains no {', '.join(missing_bands)} rows."
         if missing_bands
         else ""
     )
@@ -185,7 +185,7 @@ def write_report() -> None:
         "",
         "This summary covers statistical post-processing for the WQI5 surrogate-regression results. Inputs are the archived experiment workbook and the committed datasets under `data/`. The scripts recompute derived metrics from recorded actual and predicted values; model artifacts are not retrained here.",
         "",
-        "The task is continuous WQI5 score estimation. Hold-out results are reported with R2, MAE, RMSE, residual diagnostics, and Mean Predictive Accuracy (MPA):",
+        "The task is continuous WQI5 score estimation. Inference evaluation results are reported with R2, MAE, RMSE, residual diagnostics, and Mean Predictive Accuracy (MPA):",
         "",
         "```text",
         "MPA (%) = mean_i [(1 - |y_i - yhat_i| / y_i) * 100]",
@@ -214,7 +214,7 @@ def write_report() -> None:
         "",
         best_rmse_by_sample_table(metric_ci),
         "",
-        "## Hold-out Prediction Metrics",
+        "## Inference Evaluation Metrics",
         "",
         prediction_metrics_table(prediction_metrics, prediction_ci),
         "",
@@ -270,7 +270,7 @@ def write_report() -> None:
         "",
         "## Error by WQI Band",
         "",
-        "WQI bands follow the backend category configuration used by the WaterMirror API: Excellent, Good, Fair, Poor, Bad, and Terrible. The rows below summarize regression error within each actual WQI band."
+        "WQI bands follow the backend category configuration used by the WaterMirror API: Excellent, Good, Fair, Poor, Bad, and Terrible. The rows below summarize regression error within each actual WQI band; `Evaluation records (n)` is the number of evaluation rows in that band."
         + missing_band_note,
         "",
         band_error_table(band_errors),
