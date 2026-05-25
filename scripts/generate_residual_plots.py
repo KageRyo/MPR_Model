@@ -60,14 +60,14 @@ def save_model_diagnostics(group: pd.DataFrame, model: str) -> None:
     axes[0].axhline(0.0, color="black", linestyle="--", linewidth=1)
     axes[0].set_title(f"{model}: Residual vs Actual")
     axes[0].set_xlabel("Actual WQI5")
-    axes[0].set_ylabel("Residual (predicted - actual)")
+    axes[0].set_ylabel("Residual (actual - predicted)")
     apply_classic_axes_style(axes[0])
 
     axes[1].scatter(predicted, residual, s=9, alpha=0.35, color=color, edgecolors="none")
     axes[1].axhline(0.0, color="black", linestyle="--", linewidth=1)
     axes[1].set_title(f"{model}: Residual vs Predicted")
     axes[1].set_xlabel("Predicted WQI5")
-    axes[1].set_ylabel("Residual (predicted - actual)")
+    axes[1].set_ylabel("Residual (actual - predicted)")
     apply_classic_axes_style(axes[1])
 
     axes[2].hist(residual, bins=30, color=HIST_FILL, edgecolor=HIST_EDGE, linewidth=0.6, alpha=0.95)

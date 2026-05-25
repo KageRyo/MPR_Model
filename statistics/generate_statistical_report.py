@@ -92,7 +92,7 @@ def best_rmse_by_sample_table(metric_ci: pd.DataFrame) -> str:
                 "Best model": row["model"],
                 "Mean RMSE": fmt(row["mean"]),
                 "95% CI": ci,
-                "Runs": int(row["n_runs"]),
+                "Repeated benchmark runs (n)": int(row["n_runs"]),
             }
         )
     table = pd.DataFrame(rows)
@@ -209,6 +209,8 @@ def write_report() -> None:
         "`test_paired_error_tests.csv` reports paired absolute-error differences on the inference evaluation set. For each row, `diff_i = |y_i - yhat_A_i| - |y_i - yhat_B_i|`; the interval is the 2.5th to 97.5th percentile range of bootstrapped mean differences. A negative mean difference means model A has lower average absolute error; a positive mean difference means model B has lower average absolute error. Intervals that include zero indicate that the average difference is small relative to its bootstrap uncertainty.",
         "",
         "## Best Validation RMSE by Sample Size",
+        "",
+        "The run count is the number of repeated benchmark records available for the selected sample size and model in the archived experiment log.",
         "",
         best_rmse_by_sample_table(metric_ci),
         "",

@@ -281,7 +281,7 @@ def load_test_predictions(path: Path) -> pd.DataFrame:
         block = block.dropna(subset=["actual", "predicted"]).reset_index(drop=True)
         block["row_id"] = np.arange(len(block))
         block["model"] = model
-        block["residual"] = block["predicted"] - block["actual"]
+        block["residual"] = block["actual"] - block["predicted"]
         block["abs_error"] = np.abs(block["residual"])
         block["squared_error"] = block["residual"] ** 2
         block["actual_wqi_band"] = block["actual"].map(wqi_category)
@@ -301,7 +301,7 @@ def mean_predictive_accuracy_pct(actual: np.ndarray, predicted: np.ndarray) -> f
 def compute_prediction_metrics(df: pd.DataFrame) -> pd.Series:
     actual = df["actual"].to_numpy()
     predicted = df["predicted"].to_numpy()
-    residual = predicted - actual
+    residual = actual - predicted
     return pd.Series(
         {
             "r2": r2_score(actual, predicted),
