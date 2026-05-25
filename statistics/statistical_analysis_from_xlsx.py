@@ -1,15 +1,21 @@
 from __future__ import annotations
 
 from itertools import combinations
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from scipy.stats import ks_2samp, kstest, norm, rankdata, skew, kurtosis, spearmanr, t, wilcoxon
-from sklearn.metrics import f1_score, mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.wqi import categorize_score
+
 INPUT_XLSX = BASE_DIR / "整理.xlsx"
 DATA_DIR = PROJECT_ROOT / "data"
 OUTPUT_DIR = BASE_DIR / "outputs"
@@ -56,7 +62,8 @@ DATASET_MAP = {
 FULL_DATASET_PATH = DATA_DIR / "dataV1.csv"
 FEATURE_COLUMNS = ["DO", "BOD", "NH3N", "EC", "SS", "Score"]
 RUN_METRICS = ["valid_r2", "valid_mae", "valid_rmse", "train_time_sec"]
-TEST_METRICS = ["r2", "mae", "rmse", "category_accuracy", "macro_f1"]
+TEST_METRICS = ["r2", "mae", "rmse", "mean_predictive_accuracy_pct"]
+P_VALUE_FLOOR = 1e-300
 
 
 def ci_mean(series: pd.Series, confidence: float = 0.95) -> tuple[float, float, float, int]:
@@ -116,6 +123,28 @@ def holm_adjust(p_values: list[float]) -> list[float]:
     return adjusted.tolist()
 
 
+def report_p_value(value: float) -> str:
+    if pd.isna(value):
+        return ""
+    value = float(value)
+    if value == 0.0:
+        return f"<{P_VALUE_FLOOR:.0e}"
+    if value < 1e-4:
+        return f"{value:.3e}"
+    return f"{value:.6g}"
+
+
+def format_p_value_columns(frames: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    formatted: dict[str, pd.DataFrame] = {}
+    for name, frame in frames.items():
+        copy = frame.copy()
+        for column in copy.columns:
+            if "p_value" in column:
+                copy[column] = copy[column].map(report_p_value)
+        formatted[name] = copy
+    return formatted
+
+
 def rank_biserial_from_diff(diff: np.ndarray) -> float:
     diff = np.asarray(diff, dtype=float)
     diff = diff[diff != 0]
@@ -131,15 +160,7 @@ def rank_biserial_from_diff(diff: np.ndarray) -> float:
 
 
 def wqi_category(x: float) -> str:
-    if x <= 30:
-        return "Terrible"
-    if x <= 50:
-        return "Poor"
-    if x <= 70:
-        return "Medium"
-    if x <= 85:
-        return "Good"
-    return "Excellent"
+    return categorize_score(float(x))[0]
 
 
 def load_metric_logs(path: Path) -> pd.DataFrame:
@@ -263,10 +284,18 @@ def load_test_predictions(path: Path) -> pd.DataFrame:
         block["residual"] = block["predicted"] - block["actual"]
         block["abs_error"] = np.abs(block["residual"])
         block["squared_error"] = block["residual"] ** 2
-        block["actual_category"] = block["actual"].map(wqi_category)
-        block["pred_category"] = block["predicted"].map(wqi_category)
+        block["actual_wqi_band"] = block["actual"].map(wqi_category)
         rows.append(block)
     return pd.concat(rows, ignore_index=True)
+
+
+def mean_predictive_accuracy_pct(actual: np.ndarray, predicted: np.ndarray) -> float:
+    actual = np.asarray(actual, dtype=float)
+    predicted = np.asarray(predicted, dtype=float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        values = (1.0 - np.abs(actual - predicted) / actual) * 100.0
+    values = values[np.isfinite(values)]
+    return float(np.mean(values)) if len(values) else np.nan
 
 
 def compute_prediction_metrics(df: pd.DataFrame) -> pd.Series:
@@ -278,12 +307,11 @@ def compute_prediction_metrics(df: pd.DataFrame) -> pd.Series:
             "r2": r2_score(actual, predicted),
             "mae": mean_absolute_error(actual, predicted),
             "rmse": np.sqrt(mean_squared_error(actual, predicted)),
+            "mean_predictive_accuracy_pct": mean_predictive_accuracy_pct(actual, predicted),
             "residual_mean": float(np.mean(residual)),
             "residual_std": float(np.std(residual, ddof=1)),
             "residual_skewness": float(skew(residual)),
             "residual_kurtosis": float(kurtosis(residual, fisher=True)),
-            "category_accuracy": float(np.mean(df["actual_category"] == df["pred_category"])),
-            "macro_f1": f1_score(df["actual_category"], df["pred_category"], average="macro"),
             "n_test": len(df),
         }
     )
@@ -351,18 +379,21 @@ def paired_error_tests(predictions: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def category_level_metrics(predictions: pd.DataFrame) -> pd.DataFrame:
+def error_by_wqi_band(predictions: pd.DataFrame) -> pd.DataFrame:
     rows = []
-    for (model, actual_category), group in predictions.groupby(["model", "actual_category"], sort=True):
+    for (model, actual_wqi_band), group in predictions.groupby(["model", "actual_wqi_band"], sort=True):
         rows.append(
             {
                 "model": model,
-                "actual_category": actual_category,
+                "actual_wqi_band": actual_wqi_band,
                 "n": len(group),
                 "mae": mean_absolute_error(group["actual"], group["predicted"]),
                 "rmse": np.sqrt(mean_squared_error(group["actual"], group["predicted"])),
                 "bias": float(np.mean(group["residual"])),
-                "within_category_accuracy": float(np.mean(group["actual_category"] == group["pred_category"])),
+                "mean_predictive_accuracy_pct": mean_predictive_accuracy_pct(
+                    group["actual"].to_numpy(),
+                    group["predicted"].to_numpy(),
+                ),
             }
         )
     return pd.DataFrame(rows)
@@ -464,7 +495,7 @@ def main() -> None:
     )
     prediction_ci = bootstrap_prediction_ci(predictions)
     prediction_tests = paired_error_tests(predictions)
-    category_metrics = category_level_metrics(predictions)
+    band_errors = error_by_wqi_band(predictions)
     residual_stats = residual_diagnostics(predictions)
 
     dist_robustness = dataset_distribution_robustness()
@@ -478,16 +509,17 @@ def main() -> None:
         "test_prediction_metrics": prediction_metrics,
         "test_bootstrap_ci": prediction_ci,
         "test_paired_error_tests": prediction_tests,
-        "category_level_metrics": category_metrics,
+        "error_by_wqi_band": band_errors,
         "residual_diagnostics": residual_stats,
         "dataset_distribution_robustness": dist_robustness,
         "sample_size_stability": stability,
     }
 
-    save_csvs(frames)
+    output_frames = format_p_value_columns(frames)
+    save_csvs(output_frames)
 
     with pd.ExcelWriter(OUTPUT_XLSX, engine="openpyxl") as writer:
-        for sheet_name, frame in frames.items():
+        for sheet_name, frame in output_frames.items():
             frame.to_excel(writer, sheet_name=sheet_name[:31], index=False)
 
     print(f"Saved Excel: {OUTPUT_XLSX}")
