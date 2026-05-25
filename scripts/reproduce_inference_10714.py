@@ -10,7 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = PROJECT_ROOT / "data"
 MODELS_DIR = PROJECT_ROOT / "models"
 XLSX_PATH = PROJECT_ROOT / "statistics" / "整理.xlsx"
-OUTPUT_DIR = PROJECT_ROOT / "statistics" / "outputs" / "holdout_reproduction"
+OUTPUT_DIR = PROJECT_ROOT / "statistics" / "outputs" / "inference_reproduction"
 
 FEATURE_COLUMNS = ["DO", "BOD", "NH3N", "EC", "SS"]
 MODEL_PATHS = {
@@ -31,15 +31,15 @@ PRED_BLOCKS = {
 }
 
 
-def extract_holdout() -> pd.DataFrame:
+def extract_inference_set() -> pd.DataFrame:
     full = pd.read_csv(DATA_DIR / "dataV1.csv")
     subset_50000 = pd.read_csv(DATA_DIR / "dataV1_50000.csv")
     if not full.iloc[: len(subset_50000)].reset_index(drop=True).equals(subset_50000.reset_index(drop=True)):
-        raise ValueError("dataV1_50000.csv is not an exact prefix of dataV1.csv; hold-out extraction assumption failed.")
-    holdout = full.iloc[len(subset_50000) :].reset_index(drop=True)
-    if len(holdout) != 10714:
-        raise ValueError(f"Expected 10714 hold-out rows, found {len(holdout)}.")
-    return holdout
+        raise ValueError("dataV1_50000.csv is not an exact prefix of dataV1.csv; inference-set extraction assumption failed.")
+    inference_set = full.iloc[len(subset_50000) :].reset_index(drop=True)
+    if len(inference_set) != 10714:
+        raise ValueError(f"Expected 10714 inference evaluation rows, found {len(inference_set)}.")
+    return inference_set
 
 
 def load_xlsx_predictions() -> pd.DataFrame:
@@ -57,9 +57,9 @@ def load_xlsx_predictions() -> pd.DataFrame:
     return pd.concat(rows, ignore_index=True)
 
 
-def reproduce_predictions(holdout: pd.DataFrame) -> pd.DataFrame:
+def reproduce_predictions(inference_set: pd.DataFrame) -> pd.DataFrame:
     rows = []
-    features = holdout[FEATURE_COLUMNS]
+    features = inference_set[FEATURE_COLUMNS]
     for model, path in MODEL_PATHS.items():
         if path is None or not path.exists():
             continue
@@ -68,7 +68,7 @@ def reproduce_predictions(holdout: pd.DataFrame) -> pd.DataFrame:
         rows.append(
             pd.DataFrame(
                 {
-                    "row_id": np.arange(len(holdout)),
+                    "row_id": np.arange(len(inference_set)),
                     "model": model,
                     "predicted_reproduced": predicted,
                 }
@@ -80,15 +80,15 @@ def reproduce_predictions(holdout: pd.DataFrame) -> pd.DataFrame:
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    holdout = extract_holdout()
+    inference_set = extract_inference_set()
     xlsx_predictions = load_xlsx_predictions()
 
     if not xlsx_predictions[xlsx_predictions["model"] == "XGBoost"]["actual"].reset_index(drop=True).round(2).equals(
-        holdout["Score"].round(2).reset_index(drop=True)
+        inference_set["Score"].round(2).reset_index(drop=True)
     ):
-        raise ValueError("Hold-out scores do not match the actual values recorded in the Excel 10714-sheet.")
+        raise ValueError("Inference scores do not match the actual values recorded in the Excel 10714-sheet.")
 
-    reproduced = reproduce_predictions(holdout)
+    reproduced = reproduce_predictions(inference_set)
     comparison = xlsx_predictions.merge(reproduced, on=["row_id", "model"], how="left")
     comparison["reproduction_abs_diff"] = np.abs(comparison["predicted_xlsx"] - comparison["predicted_reproduced"])
 
@@ -105,15 +105,15 @@ def main() -> None:
             }
         )
 
-    holdout.to_csv(OUTPUT_DIR / "holdout_10714.csv", index=False)
-    xlsx_predictions.to_csv(OUTPUT_DIR / "holdout_predictions_from_xlsx.csv", index=False)
-    comparison.to_csv(OUTPUT_DIR / "holdout_prediction_reproduction_comparison.csv", index=False)
-    pd.DataFrame(summary_rows).to_csv(OUTPUT_DIR / "holdout_reproduction_summary.csv", index=False)
+    inference_set.to_csv(OUTPUT_DIR / "inference_10714.csv", index=False)
+    xlsx_predictions.to_csv(OUTPUT_DIR / "inference_predictions_from_xlsx.csv", index=False)
+    comparison.to_csv(OUTPUT_DIR / "inference_prediction_reproduction_comparison.csv", index=False)
+    pd.DataFrame(summary_rows).to_csv(OUTPUT_DIR / "inference_reproduction_summary.csv", index=False)
 
-    print(f"Saved: {OUTPUT_DIR / 'holdout_10714.csv'}")
-    print(f"Saved: {OUTPUT_DIR / 'holdout_predictions_from_xlsx.csv'}")
-    print(f"Saved: {OUTPUT_DIR / 'holdout_prediction_reproduction_comparison.csv'}")
-    print(f"Saved: {OUTPUT_DIR / 'holdout_reproduction_summary.csv'}")
+    print(f"Saved: {OUTPUT_DIR / 'inference_10714.csv'}")
+    print(f"Saved: {OUTPUT_DIR / 'inference_predictions_from_xlsx.csv'}")
+    print(f"Saved: {OUTPUT_DIR / 'inference_prediction_reproduction_comparison.csv'}")
+    print(f"Saved: {OUTPUT_DIR / 'inference_reproduction_summary.csv'}")
 
 
 if __name__ == "__main__":
