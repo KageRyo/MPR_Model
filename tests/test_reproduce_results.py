@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import subprocess
 import sys
 from pathlib import Path
@@ -66,6 +67,88 @@ def test_reproduce_results_refuses_to_overwrite_existing_results(tmp_path: Path)
 
     process = subprocess.run(
         [sys.executable, "scripts/reproduce_results.py", "--config", str(config_path)],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert process.returncode != 0
+    assert "Use --output-dir to write elsewhere or pass --overwrite explicitly" in (process.stderr or process.stdout)
+
+
+def test_reproduce_reduced_indicators_tiny_config(tmp_path: Path) -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    output_dir = tmp_path / "reduced_tiny_test"
+    config_path = tmp_path / "reduced_tiny_config.yaml"
+    config_path.write_text(
+        yaml.safe_dump(
+            {
+                "dataset": "data/dataV1_1000.csv",
+                "output_dir": str(output_dir),
+                "test_size": 0.2,
+                "compute_device": "cpu",
+                "include_direct_wqi5_full_baseline": True,
+                "seeds": [0],
+                "scenarios": {
+                    "full": {"features": ["DO", "BOD", "NH3N", "EC", "SS"]},
+                    "low_cost_core": {"features": ["DO", "EC", "SS"]},
+                },
+                "models": ["lr"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    process = subprocess.run(
+        [sys.executable, "scripts/reproduce_reduced_indicators.py", "--config", str(config_path)],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert process.returncode == 0, process.stderr or process.stdout
+    expected_files = {
+        "reduced_indicator_results.csv",
+        "reduced_indicator_summary.csv",
+        "reduced_indicator_category_metrics.csv",
+        "best_surrogate_by_scenario.csv",
+    }
+    assert expected_files.issubset({path.name for path in output_dir.glob("*.csv")})
+
+    with (output_dir / "reduced_indicator_results.csv").open("r", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert any(row["scenario"] == "full" and row["model_type"] == "direct_wqi5" for row in rows)
+    assert not any(row["scenario"] == "low_cost_core" and row["model_type"] == "direct_wqi5" for row in rows)
+
+
+def test_reproduce_reduced_indicators_refuses_to_overwrite_existing_results(tmp_path: Path) -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    output_dir = tmp_path / "existing_reduced_results"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "reduced_indicator_results.csv").write_text("already-exists\n", encoding="utf-8")
+
+    config_path = tmp_path / "reduced_tiny_config.yaml"
+    config_path.write_text(
+        yaml.safe_dump(
+            {
+                "dataset": "data/dataV1_1000.csv",
+                "output_dir": str(output_dir),
+                "test_size": 0.2,
+                "compute_device": "cpu",
+                "seeds": [0],
+                "scenarios": {
+                    "full": {"features": ["DO", "BOD", "NH3N", "EC", "SS"]},
+                },
+                "models": ["lr"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    process = subprocess.run(
+        [sys.executable, "scripts/reproduce_reduced_indicators.py", "--config", str(config_path)],
         cwd=project_root,
         capture_output=True,
         text=True,

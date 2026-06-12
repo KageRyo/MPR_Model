@@ -1,0 +1,36 @@
+dataset: data/dataV1.csv
+output_dir: results_reduced_indicators
+test_size: 0.2
+compute_device: cpu
+gpu_id: 0
+lightgbm_gpu_backend: gpu
+include_direct_wqi5_full_baseline: true
+seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+scenarios:
+  full:
+    features: [DO, BOD, NH3N, EC, SS]
+    purpose: Complete-input reference WQI5 assessment.
+  no_bod:
+    features: [DO, NH3N, EC, SS]
+    purpose: Simulate unavailable or delayed BOD measurement.
+  no_nh3n:
+    features: [DO, BOD, EC, SS]
+    purpose: Simulate unavailable or delayed NH3N measurement.
+  no_bod_no_nh3n:
+    features: [DO, EC, SS]
+    purpose: Simulate reduced sensing without BOD and NH3N.
+  low_cost_core:
+    features: [DO, EC, SS]
+    purpose: Low-cost sensor subset for deployment-constrained assessment.
+models:
+  - lr
+  - mpr
+  - svm
+  - rf
+  - xgboost
+  - lightgbm
