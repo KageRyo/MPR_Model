@@ -1,6 +1,9 @@
 dataset: data/dataV1.csv
 output_dir: results
 test_size: 0.2
+compute_device: cpu
+gpu_id: 0
+lightgbm_gpu_backend: gpu
 seeds:
   - 0
   - 1

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -54,7 +55,38 @@ def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return float(np.sqrt(mean_squared_error(y_true, y_pred)))
 
 
-def build_model(model_type: str):
+def gpu_is_visible() -> bool:
+    try:
+        subprocess.run(
+            ["nvidia-smi", "-L"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return False
+    return True
+
+
+def resolve_compute_device(requested_device: str) -> str:
+    if requested_device == "auto":
+        return "gpu" if gpu_is_visible() else "cpu"
+    if requested_device == "gpu" and not gpu_is_visible():
+        raise RuntimeError(
+            "GPU execution was requested, but nvidia-smi is not available from this environment. "
+            "Use --compute-device cpu or run from an environment with NVIDIA driver access."
+        )
+    return requested_device
+
+
+def build_model(
+    model_type: str,
+    *,
+    compute_device: str = "cpu",
+    gpu_id: int = 0,
+    lightgbm_gpu_backend: str = "gpu",
+):
     if model_type == "lr":
         return Pipeline(
             [
@@ -90,6 +122,12 @@ def build_model(model_type: str):
     if model_type == "xgboost":
         if XGBRegressor is None:
             return None
+        xgboost_params = {}
+        if compute_device == "gpu":
+            xgboost_params = {
+                "tree_method": "hist",
+                "device": f"cuda:{gpu_id}",
+            }
         return Pipeline(
             [
                 ("imputer", SimpleImputer(strategy="mean")),
@@ -103,6 +141,7 @@ def build_model(model_type: str):
                         colsample_bytree=0.9,
                         objective="reg:squarederror",
                         random_state=0,
+                        **xgboost_params,
                     ),
                 ),
             ]
@@ -110,10 +149,24 @@ def build_model(model_type: str):
     if model_type == "lightgbm":
         if LGBMRegressor is None:
             return None
+        lightgbm_params = {}
+        if compute_device == "gpu":
+            lightgbm_params = {
+                "device_type": lightgbm_gpu_backend,
+                "gpu_device_id": gpu_id,
+            }
         return Pipeline(
             [
                 ("imputer", SimpleImputer(strategy="mean")),
-                ("model", LGBMRegressor(n_estimators=300, learning_rate=0.05, random_state=0)),
+                (
+                    "model",
+                    LGBMRegressor(
+                        n_estimators=300,
+                        learning_rate=0.05,
+                        random_state=0,
+                        **lightgbm_params,
+                    ),
+                ),
             ]
         )
     raise ValueError(f"Unsupported model_type: {model_type}")
@@ -175,6 +228,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/experiment_config.yaml")
     parser.add_argument("--output-dir", default=None)
+    parser.add_argument("--compute-device", choices=["cpu", "gpu", "auto"], default=None)
+    parser.add_argument("--gpu-id", type=int, default=None)
+    parser.add_argument("--lightgbm-gpu-backend", choices=["gpu", "cuda"], default=None)
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
@@ -184,9 +240,20 @@ def main() -> None:
 
     data_path = (PROJECT_ROOT / config["dataset"]).resolve()
     configured_output_dir = args.output_dir or config["output_dir"]
+    requested_compute_device = args.compute_device or config.get("compute_device", "cpu")
+    compute_device = resolve_compute_device(requested_compute_device)
+    gpu_id = args.gpu_id if args.gpu_id is not None else int(config.get("gpu_id", 0))
+    lightgbm_gpu_backend = args.lightgbm_gpu_backend or config.get("lightgbm_gpu_backend", "gpu")
     output_dir = resolve_output_dir((PROJECT_ROOT / configured_output_dir).resolve(), overwrite=args.overwrite)
     if not data_path.exists():
         raise FileNotFoundError(f"Configured dataset does not exist: {data_path}")
+    logger.info(
+        "compute_device={} requested={} gpu_id={} lightgbm_gpu_backend={}",
+        compute_device,
+        requested_compute_device,
+        gpu_id,
+        lightgbm_gpu_backend,
+    )
     frame = pd.read_csv(data_path)
     frame["wqi5_category"] = frame["Score"].apply(lambda value: categorize_score(value)[0])
 
@@ -229,7 +296,12 @@ def main() -> None:
                 latency_s = time.perf_counter() - started
             else:
                 require_model_support(model_type)
-                estimator = build_model(model_type)
+                estimator = build_model(
+                    model_type,
+                    compute_device=compute_device,
+                    gpu_id=gpu_id,
+                    lightgbm_gpu_backend=lightgbm_gpu_backend,
+                )
                 started = time.perf_counter()
                 estimator.fit(X_train, y_train)
                 y_pred = estimator.predict(X_test)
