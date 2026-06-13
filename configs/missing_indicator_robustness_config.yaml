@@ -1,0 +1,64 @@
+dataset_50000: data/dataV1_50000.csv
+full_dataset: data/dataV1.csv
+output_dir: results_missing_indicator_robustness
+test_size: 0.2
+expected_external_rows: 10714
+external_max_rows:
+compute_device: gpu
+gpu_id: 0
+lightgbm_gpu_backend: gpu
+n_bootstrap: 200
+save_models: true
+seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+models:
+  - lr
+  - mpr
+  - svm
+  - rf
+  - xgboost
+  - lightgbm
+missing_sets:
+  missing_bod:
+    missing_indicators: [BOD]
+  missing_nh3n:
+    missing_indicators: [NH3N]
+  missing_bod_nh3n:
+    missing_indicators: [BOD, NH3N]
+event_window_stress:
+  enabled: true
+  source: external_10714
+  window_fraction: 0.01
+  window_position: middle
+  context_multiplier: 1
+  scenarios:
+    organic_event_30pct:
+      DO: 0.70
+      BOD: 1.30
+    ammonia_event_30pct:
+      NH3N: 1.30
+    suspended_solids_event_30pct:
+      SS: 1.30
+    combined_event_30pct:
+      DO: 0.70
+      BOD: 1.30
+      NH3N: 1.30
+      SS: 1.30
+    runoff_event_30pct:
+      DO: 0.90
+      EC: 0.90
+      SS: 1.30
+cpu_timing:
+  enabled: true
+  source: external_10714
+  repeats: 5
+  warmup: 1
+  thread_limits:
+    OMP_NUM_THREADS: "1"
+    MKL_NUM_THREADS: "1"
+    OPENBLAS_NUM_THREADS: "1"
+    NUMEXPR_NUM_THREADS: "1"
