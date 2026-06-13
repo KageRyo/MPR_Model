@@ -1,0 +1,63 @@
+dataset_50000: data/dataV1_50000.csv
+full_dataset: data/dataV1.csv
+output_dir: results_revision_missing_indicators
+test_size: 0.2
+expected_external_rows: 10714
+external_max_rows:
+compute_device: gpu
+gpu_id: 0
+lightgbm_gpu_backend: gpu
+n_bootstrap: 200
+save_models: true
+seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+models:
+  - lr
+  - mpr
+  - svm
+  - rf
+  - xgboost
+  - lightgbm
+stress_test:
+  enabled: true
+  scenarios:
+    organic_pollution:
+      DO: 0.75
+      BOD: 2.0
+      NH3N: 1.0
+      EC: 1.0
+      SS: 1.2
+    ammonia_pollution:
+      DO: 1.0
+      BOD: 1.0
+      NH3N: 3.0
+      EC: 1.0
+      SS: 1.0
+    suspended_solids_spike:
+      DO: 1.0
+      BOD: 1.0
+      NH3N: 1.0
+      EC: 1.0
+      SS: 3.0
+    conductivity_spike:
+      DO: 1.0
+      BOD: 1.0
+      NH3N: 1.0
+      EC: 2.0
+      SS: 1.0
+    combined_pollution:
+      DO: 0.7
+      BOD: 2.0
+      NH3N: 2.0
+      EC: 1.2
+      SS: 2.0
+    storm_runoff_like:
+      DO: 0.9
+      BOD: 1.2
+      NH3N: 1.2
+      EC: 0.85
+      SS: 2.5
