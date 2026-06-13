@@ -359,33 +359,31 @@ def append_reconstruction_rows(
         rows.append(metrics)
 
 
-def bootstrap_ci(predictions: pd.DataFrame, n_boot: int) -> list[dict[str, Any]]:
+def bootstrap_ci_from_metric_rows(metric_rows: list[dict[str, Any]], n_boot: int) -> list[dict[str, Any]]:
     rng = np.random.default_rng(42)
     rows: list[dict[str, Any]] = []
-    for (source, experiment, model_type), group in predictions.groupby(["source", "experiment", "model_type"], sort=True):
+    frame = pd.DataFrame(metric_rows)
+    for (source, experiment, model_type), group in frame.groupby(["source", "experiment", "model_type"], sort=True):
         group = group.reset_index(drop=True)
-        y_true = group["actual"].to_numpy()
-        y_pred = group["predicted"].to_numpy()
-        n = len(group)
-        boot_metrics: list[dict[str, float]] = []
-        for _ in range(n_boot):
-            idx = rng.choice(np.arange(n), size=n, replace=True)
-            boot_metrics.append(prediction_metrics(y_true[idx], y_pred[idx]))
-        boot_frame = pd.DataFrame(boot_metrics)
-        point = prediction_metrics(y_true, y_pred)
         for metric in METRICS_FOR_CI:
+            values = group[metric].to_numpy(dtype=float)
+            boot_values = [
+                float(np.mean(values[rng.choice(np.arange(len(values)), size=len(values), replace=True)]))
+                for _ in range(n_boot)
+            ]
             rows.append(
                 {
                     "source": source,
                     "experiment": experiment,
                     "model_type": model_type,
                     "metric": metric,
-                    "point_estimate": point[metric],
-                    "bootstrap_mean": float(boot_frame[metric].mean()),
-                    "ci95_low": float(boot_frame[metric].quantile(0.025)),
-                    "ci95_high": float(boot_frame[metric].quantile(0.975)),
+                    "point_estimate": float(np.mean(values)),
+                    "bootstrap_mean": float(np.mean(boot_values)),
+                    "ci95_low": float(np.quantile(boot_values, 0.025)),
+                    "ci95_high": float(np.quantile(boot_values, 0.975)),
                     "n_bootstrap": n_boot,
-                    "n": n,
+                    "n_runs": len(values),
+                    "n_per_run": int(group["n"].iloc[0]),
                 }
             )
     return rows
@@ -404,12 +402,14 @@ def holm_adjust(p_values: list[float]) -> list[float]:
     return adjusted
 
 
-def paired_tests(predictions: pd.DataFrame) -> list[dict[str, Any]]:
+def paired_tests_from_metric_rows(metric_rows: list[dict[str, Any]], metric: str = "mae") -> list[dict[str, Any]]:
+    frame = pd.DataFrame(metric_rows)
+    frame[metric] = frame[metric].astype(float)
     rows: list[dict[str, Any]] = []
     pending: list[dict[str, Any]] = []
     p_values: list[float] = []
-    for (source, experiment), group in predictions.groupby(["source", "experiment"], sort=True):
-        wide = group.pivot_table(index=["seed", "row_id"], columns="model_type", values="abs_error", aggfunc="first")
+    for (source, experiment), group in frame.groupby(["source", "experiment"], sort=True):
+        wide = group.pivot_table(index="seed", columns="model_type", values=metric, aggfunc="first")
         for model_a, model_b in itertools.combinations(sorted(wide.columns), 2):
             paired = wide[[model_a, model_b]].dropna()
             diff = (paired[model_a] - paired[model_b]).to_numpy()
@@ -432,7 +432,7 @@ def paired_tests(predictions: pd.DataFrame) -> list[dict[str, Any]]:
                 {
                     "source": source,
                     "experiment": experiment,
-                    "metric": "absolute_error",
+                    "metric": metric,
                     "model_a": model_a,
                     "model_b": model_b,
                     "n_pairs": len(paired),
@@ -796,8 +796,8 @@ def main() -> None:
     write_csv(output_dir / "metrics" / "best_by_experiment_source.csv", best_by_experiment_source(metric_rows))
     write_csv(output_dir / "metrics" / "stage1_reconstruction_metrics.csv", reconstruction_rows)
     write_csv(output_dir / "metrics" / "error_by_wqi_band.csv", category_error_rows(predictions))
-    write_csv(output_dir / "stats" / "bootstrap_ci.csv", bootstrap_ci(predictions, n_bootstrap))
-    write_csv(output_dir / "stats" / "paired_error_tests.csv", paired_tests(predictions))
+    write_csv(output_dir / "stats" / "bootstrap_ci.csv", bootstrap_ci_from_metric_rows(metric_rows, n_bootstrap))
+    write_csv(output_dir / "stats" / "paired_error_tests.csv", paired_tests_from_metric_rows(metric_rows))
     write_csv(output_dir / "stress_tests" / "stress_summary.csv", stress_rows)
     logger.success(f"completed. Outputs written to: {output_dir}")
 

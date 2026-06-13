@@ -260,6 +260,33 @@ def test_revision_missing_indicator_experiments_tiny_config(tmp_path: Path) -> N
     assert len(metric_rows) == 8
     assert {"r2", "mae", "rmse", "nmae", "accuracy", "macro_f1"}.issubset(metric_rows[0])
 
+    for derived_path in [
+        output_dir / "stats" / "bootstrap_ci.csv",
+        output_dir / "stats" / "paired_error_tests.csv",
+        output_dir / "stress_tests" / "stress_summary.csv",
+    ]:
+        derived_path.unlink()
+
+    finalize_process = subprocess.run(
+        [
+            sys.executable,
+            "scripts/finalize_revision_missing_indicator_outputs.py",
+            "--output-dir",
+            str(output_dir),
+            "--config",
+            str(config_path),
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert finalize_process.returncode == 0, finalize_process.stderr or finalize_process.stdout
+    assert (output_dir / "stats" / "bootstrap_ci.csv").exists()
+    assert (output_dir / "stats" / "paired_error_tests.csv").exists()
+    assert (output_dir / "stress_tests" / "stress_summary.csv").exists()
+
 
 def test_revision_missing_indicator_experiments_refuses_to_overwrite_existing_results(tmp_path: Path) -> None:
     project_root = Path(__file__).resolve().parents[1]
