@@ -456,6 +456,20 @@ def event_window_frame(external: pd.DataFrame, event_slice: tuple[int, int], mul
     return clipped_features(modified)
 
 
+def event_window_subset(external: pd.DataFrame, windows: dict[str, tuple[int, int]]) -> tuple[pd.DataFrame, dict[str, tuple[int, int]]]:
+    ordered_segments = ["before", "event", "after"]
+    indices: list[int] = []
+    relative_windows: dict[str, tuple[int, int]] = {}
+    cursor = 0
+    for segment in ordered_segments:
+        start, end = windows[segment]
+        segment_indices = list(range(start, end))
+        indices.extend(segment_indices)
+        relative_windows[segment] = (cursor, cursor + len(segment_indices))
+        cursor += len(segment_indices)
+    return external.iloc[indices].reset_index(drop=True), relative_windows
+
+
 def append_event_window_rows(
     rows: list[dict[str, Any]],
     *,
@@ -466,13 +480,15 @@ def append_event_window_rows(
     scenario_name: str,
     baseline_pred: np.ndarray,
     stress_pred: np.ndarray,
-    windows: dict[str, tuple[int, int]],
+    calculation_windows: dict[str, tuple[int, int]],
+    reported_windows: dict[str, tuple[int, int]],
 ) -> None:
     baseline_cat = score_to_category(baseline_pred)
     stress_cat = score_to_category(stress_pred)
-    for segment, (start, end) in windows.items():
+    for segment, (start, end) in calculation_windows.items():
         if end <= start:
             continue
+        reported_start, reported_end = reported_windows[segment]
         idx = np.arange(start, end)
         worse = [category_rank(stress_cat[i]) < category_rank(baseline_cat[i]) for i in idx]
         rows.append(
@@ -485,8 +501,8 @@ def append_event_window_rows(
                 "model_type": model_type,
                 "stress_scenario": scenario_name,
                 "segment": segment,
-                "start_index": int(start),
-                "end_index_exclusive": int(end),
+                "start_index": int(reported_start),
+                "end_index_exclusive": int(reported_end),
                 "n": int(end - start),
                 "baseline_mean_score": float(np.mean(baseline_pred[idx])),
                 "stress_mean_score": float(np.mean(stress_pred[idx])),
@@ -632,6 +648,7 @@ def main() -> None:
         float(event_config.get("window_fraction", 0.01)),
         int(event_config.get("context_multiplier", 1)),
     )
+    event_external, event_relative_windows = event_window_subset(external, windows)
     event_scenarios = event_config.get("scenarios", {})
 
     for seed in seeds:
@@ -723,9 +740,9 @@ def main() -> None:
                         )
 
                 if event_enabled:
-                    baseline_pred = predict_bundle(mode, bundle, external)
+                    baseline_pred = predict_bundle(mode, bundle, event_external)
                     for scenario_name, multipliers in event_scenarios.items():
-                        scenario_frame = event_window_frame(external, windows["event"], multipliers)
+                        scenario_frame = event_window_frame(event_external, event_relative_windows["event"], multipliers)
                         stress_pred = predict_bundle(mode, bundle, scenario_frame)
                         append_event_window_rows(
                             event_rows,
@@ -736,7 +753,8 @@ def main() -> None:
                             scenario_name=scenario_name,
                             baseline_pred=baseline_pred,
                             stress_pred=stress_pred,
-                            windows=windows,
+                            calculation_windows=event_relative_windows,
+                            reported_windows=windows,
                         )
 
     predictions = pd.DataFrame(prediction_rows)
