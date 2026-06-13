@@ -449,7 +449,7 @@ def event_window_indices(n_rows: int, window_fraction: float, context_multiplier
 
 
 def event_window_frame(external: pd.DataFrame, event_slice: tuple[int, int], multipliers: dict[str, float]) -> pd.DataFrame:
-    modified = external[FEATURE_COLUMNS].copy()
+    modified = external[FEATURE_COLUMNS].copy().astype(float)
     start, end = event_slice
     for column, multiplier in multipliers.items():
         modified.loc[start : end - 1, column] = modified.loc[start : end - 1, column] * float(multiplier)
