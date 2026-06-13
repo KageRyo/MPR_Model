@@ -65,10 +65,16 @@ def set_cpu_backend(bundle: dict[str, Any]) -> None:
             continue
         model = getattr(estimator, "named_steps", {}).get("model", estimator)
         if hasattr(model, "set_params"):
+            params = model.get_params(deep=False) if hasattr(model, "get_params") else {}
             try:
                 model.set_params(device="cpu")
             except (TypeError, ValueError):
                 pass
+            if "device_type" in params:
+                try:
+                    model.set_params(device_type="cpu")
+                except (TypeError, ValueError):
+                    pass
 
 
 def model_path(output_dir: Path, seed: int, missing_set: str, mode: str, model_type: str) -> Path:
