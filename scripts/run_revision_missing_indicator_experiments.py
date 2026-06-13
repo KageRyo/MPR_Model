@@ -557,6 +557,39 @@ def append_stress_rows(
     )
 
 
+def append_stress_rows_for_experiment(
+    rows: list[dict[str, Any]],
+    *,
+    experiment: str,
+    seed: int,
+    model_type: str,
+    baseline_frame: pd.DataFrame,
+    stress_inputs: dict[str, pd.DataFrame],
+    model_bundle: dict[str, Any],
+) -> None:
+    baseline_pred = predict_bundle(experiment, model_bundle, baseline_frame)
+    baseline_cat = score_to_category(baseline_pred)
+    for scenario_name, scenario_frame in stress_inputs.items():
+        scenario_pred = predict_bundle(experiment, model_bundle, scenario_frame)
+        scenario_cat = score_to_category(scenario_pred)
+        worse = [category_rank(after) < category_rank(before) for before, after in zip(baseline_cat, scenario_cat)]
+        rows.append(
+            {
+                "experiment": experiment,
+                "seed": seed,
+                "model_type": model_type,
+                "stress_scenario": scenario_name,
+                "n": len(scenario_pred),
+                "baseline_mean_score": float(np.mean(baseline_pred)),
+                "stress_mean_score": float(np.mean(scenario_pred)),
+                "mean_delta_stress_minus_baseline": float(np.mean(scenario_pred - baseline_pred)),
+                "median_delta_stress_minus_baseline": float(np.median(scenario_pred - baseline_pred)),
+                "pct_score_decreased": float(np.mean(scenario_pred < baseline_pred)),
+                "pct_category_worse": float(np.mean(worse)),
+            }
+        )
+
+
 def main() -> None:
     args = parse_args()
     config_path = Path(args.config)
@@ -775,17 +808,15 @@ def main() -> None:
 
             if stress_enabled:
                 for experiment, (bundle, _) in bundles.items():
-                    for scenario_name, scenario_frame in stress_inputs.items():
-                        append_stress_rows(
-                            stress_rows,
-                            experiment=experiment,
-                            seed=seed,
-                            model_type=model_type,
-                            baseline_frame=external,
-                            scenario_name=scenario_name,
-                            scenario_frame=scenario_frame,
-                            model_bundle=bundle,
-                        )
+                    append_stress_rows_for_experiment(
+                        stress_rows,
+                        experiment=experiment,
+                        seed=seed,
+                        model_type=model_type,
+                        baseline_frame=external,
+                        stress_inputs=stress_inputs,
+                        model_bundle=bundle,
+                    )
 
     predictions = pd.DataFrame(prediction_rows)
     metric_frame = pd.DataFrame(metric_rows)

@@ -24,7 +24,7 @@ from run_revision_missing_indicator_experiments import (  # noqa: E402
     FULL_REFERENCE,
     REDUCED_RETRAINING,
     TWO_STAGE,
-    append_stress_rows,
+    append_stress_rows_for_experiment,
     bootstrap_ci_from_metric_rows,
     extract_external_set,
     paired_tests_from_metric_rows,
@@ -95,17 +95,15 @@ def recompute_stress_rows(output_dir: Path, config: dict[str, Any], manifest: di
                 TWO_STAGE: two_stage_bundle,
             }
             for experiment, bundle in bundles.items():
-                for scenario_name, scenario_frame in stress_inputs.items():
-                    append_stress_rows(
-                        rows,
-                        experiment=experiment,
-                        seed=int(seed),
-                        model_type=model_type,
-                        baseline_frame=external,
-                        scenario_name=scenario_name,
-                        scenario_frame=scenario_frame,
-                        model_bundle=bundle,
-                    )
+                append_stress_rows_for_experiment(
+                    rows,
+                    experiment=experiment,
+                    seed=int(seed),
+                    model_type=model_type,
+                    baseline_frame=external,
+                    stress_inputs=stress_inputs,
+                    model_bundle=bundle,
+                )
     return rows
 
 
