@@ -1,0 +1,31 @@
+{
+  "created_at_utc": "2026-06-14T14:55:37.254276+00:00",
+  "bundle_dir": "results_20260614_stress",
+  "output_dir": "statistics/outputs",
+  "tables": [
+    "revision_table6_complete_input_performance.csv",
+    "revision_table7_missing_indicator_robustness.csv",
+    "revision_table8_cpu_only_timing.csv",
+    "revision_table9_stress107_summary.csv"
+  ],
+  "large_artifacts_policy": "Large raw models/predictions remain under ignored results_20260614_stress/raw and are not committed.",
+  "production_model": {
+    "created_at_utc": "2026-06-14T14:55:38.141562+00:00",
+    "production_artifact": "models/XGBoost/modelXGBVer.2.0-revision-50000-seed2.pkl",
+    "source_artifact": "results_missing_indicator_robustness_20260613_gpu_v2/models/seed_2/full_reference/xgboost.joblib",
+    "selection": "lowest external_10714 MAE among full_reference xgboost seed artifacts",
+    "seed": 2,
+    "source": "external_10714",
+    "experiment": "full_reference",
+    "model_type": "xgboost",
+    "metrics": {
+      "r2": 0.9993356816434588,
+      "mae": 0.2448908820836784,
+      "rmse": 0.3888834254541707,
+      "accuracy": 0.9899197311928318,
+      "macro_f1": 0.9705477392431336
+    },
+    "api_contract": "complete-input WQI5 surrogate; required features are DO, BOD, NH3N, EC, SS",
+    "not_for": "missing-indicator replacement or future water-quality forecasting"
+  }
+}

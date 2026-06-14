@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import os
 from pathlib import Path
 
@@ -15,6 +16,14 @@ INPUT_CSV = PROJECT_ROOT / "statistics" / "outputs" / "test_predictions_long.csv
 OUTPUT_DIR = PROJECT_ROOT / "statistics" / "outputs" / "figures"
 
 MODEL_ORDER = ["LightGBM", "XGBoost", "RF", "SVM", "MPR", "LR"]
+MODEL_LABELS = {
+    "lightgbm": "LightGBM",
+    "xgboost": "XGBoost",
+    "rf": "RF",
+    "svm": "SVM",
+    "mpr": "MPR",
+    "lr": "LR",
+}
 MODEL_COLORS = {
     "LightGBM": "#1b5e20",
     "XGBoost": "#1565c0",
@@ -140,12 +149,50 @@ def save_qq_overview(frame: pd.DataFrame) -> None:
     plt.close(fig)
 
 
-def main() -> None:
-    if not INPUT_CSV.exists():
-        raise FileNotFoundError(f"Missing input CSV: {INPUT_CSV}. Run statistics/statistical_analysis_from_xlsx.py first.")
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input-csv", default=str(INPUT_CSV))
+    parser.add_argument("--output-dir", default=str(OUTPUT_DIR))
+    parser.add_argument("--source", default=None)
+    parser.add_argument("--experiment", default=None)
+    parser.add_argument("--missing-set", default=None)
+    return parser.parse_args()
 
+
+def load_prediction_frame(path: Path, args: argparse.Namespace) -> pd.DataFrame:
+    frame = pd.read_csv(path)
+    if args.source and "source" in frame.columns:
+        frame = frame[frame["source"] == args.source]
+    if args.experiment and "experiment" in frame.columns:
+        frame = frame[frame["experiment"] == args.experiment]
+    if args.missing_set and "missing_set" in frame.columns:
+        frame = frame[frame["missing_set"] == args.missing_set]
+
+    if "model" not in frame.columns and "model_type" in frame.columns:
+        frame["model"] = frame["model_type"].map(MODEL_LABELS).fillna(frame["model_type"])
+    if "residual" not in frame.columns:
+        frame["residual"] = frame["actual"] - frame["predicted"]
+    return frame
+
+
+def main() -> None:
+    args = parse_args()
+    input_csv = Path(args.input_csv)
+    output_dir = Path(args.output_dir)
+    if not input_csv.is_absolute():
+        input_csv = PROJECT_ROOT / input_csv
+    if not output_dir.is_absolute():
+        output_dir = PROJECT_ROOT / output_dir
+
+    if not input_csv.exists():
+        raise FileNotFoundError(f"Missing input CSV: {input_csv}.")
+
+    global OUTPUT_DIR
+    OUTPUT_DIR = output_dir
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    frame = pd.read_csv(INPUT_CSV)
+    frame = load_prediction_frame(input_csv, args)
+    if frame.empty:
+        raise ValueError("No prediction rows remain after applying filters.")
 
     for model in MODEL_ORDER:
         group = frame[frame["model"] == model].copy()

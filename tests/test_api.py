@@ -4,6 +4,8 @@ import httpx
 import pytest
 
 from src.api import app
+from src.enums import ModelTypeEnum
+from src.services import WaterQualityService
 from src.wqi import categorize_score, direct_wqi5_score
 
 
@@ -92,6 +94,13 @@ async def test_v2_assessment_endpoint():
     payload = response.json()
     assert payload["model_type"] == "direct_wqi5"
     assert payload["category"] in {"Excellent", "Good", "Fair", "Poor", "Bad", "Terrible"}
+
+
+def test_xgboost_revision_artifact_is_selected():
+    service = WaterQualityService()
+    artifact = service._pick_artifact(ModelTypeEnum.XGBOOST)
+    assert artifact is not None
+    assert artifact.name == "modelXGBVer.2.0-revision-50000-seed2.pkl"
 
 
 @pytest.mark.anyio

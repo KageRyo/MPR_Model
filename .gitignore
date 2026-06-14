@@ -178,5 +178,8 @@ statistics/outputs/*
 !statistics/outputs/dataset_distribution_robustness.csv
 !statistics/outputs/sample_size_stability.csv
 !statistics/outputs/statistical_analysis_report.md
+!statistics/outputs/revision_*.csv
+!statistics/outputs/revision_*.json
+!statistics/outputs/revision_*.md
 !statistics/outputs/figures/
 !statistics/outputs/figures/*.png
