@@ -374,6 +374,38 @@ def test_missing_indicator_robustness_tiny_workflow(tmp_path: Path) -> None:
                         }
                     },
                 },
+                "stress107_event_windows": {
+                    "enabled": True,
+                    "source": "external_10714",
+                    "window_mode": "sequential_equal_blocks",
+                    "n_windows": 4,
+                    "severities": {
+                        "low_30pct": {"perturbation_pct": 30},
+                        "medium_100pct": {"perturbation_pct": 100},
+                    },
+                    "scenarios": {
+                        "combined_pollution": {
+                            "DO_decrease_factors": {
+                                "low_30pct": 0.7,
+                                "medium_100pct": 0.5,
+                            },
+                            "increase_indicators": {
+                                "BOD": {
+                                    "low_30pct": 1.3,
+                                    "medium_100pct": 2.0,
+                                },
+                                "NH3N": {
+                                    "low_30pct": 1.3,
+                                    "medium_100pct": 2.0,
+                                },
+                                "SS": {
+                                    "low_30pct": 1.3,
+                                    "medium_100pct": 2.0,
+                                },
+                            },
+                        }
+                    },
+                },
                 "cpu_timing": {
                     "enabled": True,
                     "source": "external_10714",
@@ -419,6 +451,25 @@ def test_missing_indicator_robustness_tiny_workflow(tmp_path: Path) -> None:
     )
     assert timing_process.returncode == 0, timing_process.stderr or timing_process.stdout
 
+    stress107_dir = tmp_path / "robustness_tiny_stress107"
+    stress107_process = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_stress107_event_windows.py",
+            "--artifact-dir",
+            str(output_dir),
+            "--output-dir",
+            str(stress107_dir),
+            "--config",
+            str(config_path),
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert stress107_process.returncode == 0, stress107_process.stderr or stress107_process.stdout
+
     workbook_path = output_dir / "reports" / "robustness_tiny.xlsx"
     excel_process = subprocess.run(
         [
@@ -436,6 +487,24 @@ def test_missing_indicator_robustness_tiny_workflow(tmp_path: Path) -> None:
     )
     assert excel_process.returncode == 0, excel_process.stderr or excel_process.stdout
     assert workbook_path.exists()
+
+    stress107_workbook_path = stress107_dir / "reports" / "stress107_tiny.xlsx"
+    stress107_excel_process = subprocess.run(
+        [
+            sys.executable,
+            "scripts/export_missing_indicator_robustness_excel.py",
+            "--output-dir",
+            str(stress107_dir),
+            "--output-file",
+            str(stress107_workbook_path),
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert stress107_excel_process.returncode == 0, stress107_excel_process.stderr or stress107_excel_process.stdout
+    assert stress107_workbook_path.exists()
 
     expected_files = {
         "manifest.json",
@@ -479,3 +548,16 @@ def test_missing_indicator_robustness_tiny_workflow(tmp_path: Path) -> None:
         "missing_bod_nh3n": ["BOD", "NH3N"],
         "missing_nh3n": ["NH3N"],
     }
+
+    stress107_expected_rows = {
+        "stress_tests/stress107_setting.csv": 12,
+        "stress_tests/stress107_window_summary.csv": 80,
+        "stress_tests/stress107_detection_summary.csv": 20,
+        "stress_tests/stress107_severity_monotonicity.csv": 10,
+    }
+    for relative_path, expected_rows in stress107_expected_rows.items():
+        with (stress107_dir / relative_path).open("r", encoding="utf-8") as handle:
+            assert len(list(csv.DictReader(handle))) == expected_rows
+    stress107_manifest = json.loads((stress107_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert stress107_manifest["n_windows"] == 4
+    assert stress107_manifest["severities"] == ["low_30pct", "medium_100pct"]

@@ -149,6 +149,7 @@ def main() -> None:
             {"item": "Result directory", "value": str(output_dir)},
             {"item": "Row-level predictions", "value": "See predictions/predictions_long.csv; Excel contains grouped counts and summaries."},
             {"item": "Stress test", "value": "event-window stress is controlled synthetic perturbation, not real event validation."},
+            {"item": "Stress107", "value": "107 sequential event-window stress sheets are included when stress107 CSV files exist."},
             {"item": "CPU timing", "value": "CPU-only timing is included if timing/cpu_only_inference_timing_summary.csv exists."},
         ]
     )
@@ -160,6 +161,11 @@ def main() -> None:
         ("Per_Seed_Metrics", read_csv_if_exists(output_dir / "metrics" / "metrics_by_seed.csv")),
         ("Recon_Metrics", read_csv_if_exists(output_dir / "metrics" / "indicator_reconstruction_metrics.csv")),
         ("Event_Window_Stress", read_csv_if_exists(output_dir / "stress_tests" / "event_window_stress_summary.csv")),
+        ("Stress107_Setting", read_csv_if_exists(output_dir / "stress_tests" / "stress107_setting.csv")),
+        ("Stress107_Window", read_csv_if_exists(output_dir / "stress_tests" / "stress107_window_summary.csv")),
+        ("Stress107_Detect", read_csv_if_exists(output_dir / "stress_tests" / "stress107_detection_summary.csv")),
+        ("Stress107_Monotonic", read_csv_if_exists(output_dir / "stress_tests" / "stress107_severity_monotonicity.csv")),
+        ("Stress107_Key", read_csv_if_exists(output_dir / "stress_tests" / "stress107_key_conclusions.csv")),
         ("CPU_Timing_Summary", read_csv_if_exists(output_dir / "timing" / "cpu_only_inference_timing_summary.csv")),
         ("CPU_Timing_Raw", read_csv_if_exists(output_dir / "timing" / "cpu_only_inference_timing.csv")),
         ("Bootstrap_CI", read_csv_if_exists(output_dir / "stats" / "bootstrap_ci.csv")),
