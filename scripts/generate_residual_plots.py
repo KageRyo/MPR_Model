@@ -12,7 +12,14 @@ import pandas as pd
 from scipy.stats import norm
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-INPUT_CSV = PROJECT_ROOT / "statistics" / "outputs" / "test_predictions_long.csv"
+INPUT_CSV = (
+    PROJECT_ROOT
+    / "results_20260614_stress"
+    / "raw"
+    / "results_missing_indicator_robustness_20260613_gpu_v2"
+    / "predictions"
+    / "predictions_long.csv"
+)
 OUTPUT_DIR = PROJECT_ROOT / "statistics" / "outputs" / "figures"
 
 MODEL_ORDER = ["LightGBM", "XGBoost", "RF", "SVM", "MPR", "LR"]

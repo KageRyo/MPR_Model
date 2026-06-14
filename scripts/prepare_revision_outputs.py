@@ -19,6 +19,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 METRICS_FOR_TABLES = ["r2", "mae", "rmse", "accuracy", "macro_f1"]
 TABLE6_METRICS = ["r2", "mae", "rmse", "macro_f1"]
+FEATURE_COLUMNS = ["DO", "BOD", "NH3N", "EC", "SS"]
 MODEL_ARTIFACT_PREFIX = {
     "lightgbm": "modelLGBM",
     "lr": "modelLR",
@@ -240,6 +241,27 @@ def make_stress107_summary(detection: pd.DataFrame, monotonicity: pd.DataFrame) 
     return detection_summary.merge(mono_summary, on="stress_scenario", how="left")
 
 
+def make_feature_score_correlations() -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    datasets = {
+        "processed_60714": PROJECT_ROOT / "data" / "dataV1.csv",
+        "revision_subset_50000": PROJECT_ROOT / "data" / "dataV1_50000.csv",
+    }
+    for dataset_name, path in datasets.items():
+        frame = pd.read_csv(path)
+        for feature in FEATURE_COLUMNS:
+            rows.append(
+                {
+                    "dataset": dataset_name,
+                    "feature": feature,
+                    "n": int(frame[[feature, "Score"]].dropna().shape[0]),
+                    "pearson_r": float(frame[feature].corr(frame["Score"], method="pearson")),
+                    "spearman_r": float(frame[feature].corr(frame["Score"], method="spearman")),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
 def write_report(
     output_dir: Path,
     table6: pd.DataFrame,
@@ -262,7 +284,7 @@ def write_report(
         "## Scope",
         "",
         "This report freezes the 2026-06-14 missing-indicator robustness, Stress107, and CPU-only timing outputs.",
-        "It replaces the earlier MPA-centered publication statistics with R2, MAE, RMSE, Macro-F1, bootstrap confidence intervals, and paired model tests.",
+        "It replaces the earlier percentage-agreement tables with R2, MAE, RMSE, Macro-F1, bootstrap confidence intervals, and paired model tests.",
         "",
         "The task remains WQI5 surrogate regression, not future water-quality forecasting. Direct WQI5 computation remains the reference method when all five indicators are available.",
         "",
@@ -291,6 +313,7 @@ def write_report(
             "- `revision_table7_missing_indicator_robustness.csv`",
             "- `revision_table8_cpu_only_timing.csv`",
             "- `revision_table9_stress107_summary.csv`",
+            "- `revision_feature_score_correlations.csv`",
             "- `revision_bootstrap_ci.csv`",
             "- `revision_paired_error_tests.csv`",
             "",
@@ -393,6 +416,7 @@ def main() -> None:
     table7 = make_table7(best, bootstrap_ci)
     table8 = make_table8(cpu_timing)
     table9 = make_stress107_summary(stress_detection, stress_mono)
+    correlations = make_feature_score_correlations()
 
     table6.to_csv(output_dir / "revision_table6_complete_input_performance.csv", index=False)
     table7.to_csv(output_dir / "revision_table7_missing_indicator_robustness.csv", index=False)
@@ -403,6 +427,7 @@ def main() -> None:
     metrics_by_seed.to_csv(output_dir / "revision_metrics_by_seed.csv", index=False)
     stress_detection.to_csv(output_dir / "revision_stress107_detection_summary.csv", index=False)
     stress_mono.to_csv(output_dir / "revision_stress107_severity_monotonicity.csv", index=False)
+    correlations.to_csv(output_dir / "revision_feature_score_correlations.csv", index=False)
 
     write_report(output_dir, table6, table7, table8, table9)
 
@@ -415,6 +440,7 @@ def main() -> None:
             "revision_table7_missing_indicator_robustness.csv",
             "revision_table8_cpu_only_timing.csv",
             "revision_table9_stress107_summary.csv",
+            "revision_feature_score_correlations.csv",
         ],
         "large_artifacts_policy": "Large raw models/predictions remain under ignored results_20260614_stress/raw and are not committed.",
     }
