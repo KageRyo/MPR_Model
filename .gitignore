@@ -163,6 +163,9 @@ cython_debug/
 results/
 results_*/
 
+# Local model artifacts
+models/**/*.pkl
+
 # Generated statistical-analysis outputs
 statistics/整理.xlsx
 statistics/outputs/

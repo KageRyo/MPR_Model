@@ -19,6 +19,22 @@ if str(PROJECT_ROOT) not in sys.path:
 
 METRICS_FOR_TABLES = ["r2", "mae", "rmse", "accuracy", "macro_f1"]
 TABLE6_METRICS = ["r2", "mae", "rmse", "macro_f1"]
+MODEL_ARTIFACT_PREFIX = {
+    "lightgbm": "modelLGBM",
+    "lr": "modelLR",
+    "mpr": "modelMPR",
+    "rf": "modelRF",
+    "svm": "modelSVM",
+    "xgboost": "modelXGB",
+}
+MODEL_DIR = {
+    "lightgbm": "LightGBM",
+    "lr": "LR",
+    "mpr": "MPR",
+    "rf": "RF",
+    "svm": "SVM",
+    "xgboost": "XGBoost",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -28,7 +44,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bundle-dir", default="results_20260614_stress")
     parser.add_argument("--output-dir", default="statistics/outputs")
     parser.add_argument("--update-production-model", action="store_true")
-    parser.add_argument("--archive-legacy-xgboost", action="store_true")
+    parser.add_argument(
+        "--archive-legacy-50000-artifacts",
+        "--archive-legacy-xgboost",
+        dest="archive_legacy_50000_artifacts",
+        action="store_true",
+    )
     return parser.parse_args()
 
 
@@ -281,45 +302,52 @@ def write_report(
     (output_dir / "revision_statistical_summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_production_model(output_dir: Path) -> dict[str, Any]:
-    metrics = pd.read_csv(output_dir / "revision_table6_complete_input_performance.csv")
-    best = metrics.sort_values(["mae_mean", "rmse_mean", "model_type"]).iloc[0]
-    model_type = str(best["model_type"])
-    if model_type != "xgboost":
-        raise RuntimeError(f"Expected xgboost as revision complete-input model, found {model_type}")
-
+def write_production_models(output_dir: Path) -> dict[str, Any]:
     seed_metrics = pd.read_csv(output_dir / "revision_metrics_by_seed.csv")
-    candidates = seed_metrics[
+    full_reference = seed_metrics[
         (seed_metrics["source"] == "external_10714")
         & (seed_metrics["experiment"] == "full_reference")
-        & (seed_metrics["model_type"] == model_type)
-    ].sort_values(["mae", "rmse", "seed"])
-    selected = candidates.iloc[0]
-    bundle_path = PROJECT_ROOT / str(selected["model_path"])
-    bundle = joblib.load(bundle_path)
-    model = bundle["wqi_model"] if isinstance(bundle, dict) and "wqi_model" in bundle else bundle
+    ].copy()
 
-    target_dir = PROJECT_ROOT / "models" / "XGBoost"
-    target_dir.mkdir(parents=True, exist_ok=True)
-    target_path = target_dir / f"modelXGBVer.2.0-revision-50000-seed{int(selected['seed'])}.pkl"
-    joblib.dump(model, target_path)
+    artifacts: list[dict[str, Any]] = []
+    for model_type in sorted(MODEL_DIR):
+        candidates = full_reference[full_reference["model_type"] == model_type].sort_values(["mae", "rmse", "seed"])
+        if candidates.empty:
+            raise RuntimeError(f"No full_reference seed artifact found for {model_type}")
+        selected = candidates.iloc[0]
+        bundle_path = PROJECT_ROOT / str(selected["model_path"])
+        bundle = joblib.load(bundle_path)
+        model = bundle["wqi_model"] if isinstance(bundle, dict) and "wqi_model" in bundle else bundle
+        if not hasattr(model, "predict"):
+            raise TypeError(f"Selected {model_type} artifact does not expose predict(): {bundle_path}")
+
+        target_dir = PROJECT_ROOT / "models" / MODEL_DIR[model_type]
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_path = target_dir / f"{MODEL_ARTIFACT_PREFIX[model_type]}Ver.2.0-revision-50000-seed{int(selected['seed'])}.pkl"
+        joblib.dump(model, target_path)
+
+        artifacts.append(
+            {
+                "model_type": model_type,
+                "production_artifact": str(target_path.relative_to(PROJECT_ROOT)),
+                "source_artifact": str(bundle_path.relative_to(PROJECT_ROOT)),
+                "seed": int(selected["seed"]),
+                "source": str(selected["source"]),
+                "experiment": str(selected["experiment"]),
+                "metrics": {
+                    "r2": float(selected["r2"]),
+                    "mae": float(selected["mae"]),
+                    "rmse": float(selected["rmse"]),
+                    "accuracy": float(selected["accuracy"]),
+                    "macro_f1": float(selected["macro_f1"]),
+                },
+            }
+        )
 
     manifest = {
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
-        "production_artifact": str(target_path.relative_to(PROJECT_ROOT)),
-        "source_artifact": str(bundle_path.relative_to(PROJECT_ROOT)),
-        "selection": "lowest external_10714 MAE among full_reference xgboost seed artifacts",
-        "seed": int(selected["seed"]),
-        "source": str(selected["source"]),
-        "experiment": str(selected["experiment"]),
-        "model_type": model_type,
-        "metrics": {
-            "r2": float(selected["r2"]),
-            "mae": float(selected["mae"]),
-            "rmse": float(selected["rmse"]),
-            "accuracy": float(selected["accuracy"]),
-            "macro_f1": float(selected["macro_f1"]),
-        },
+        "selection": "lowest external_10714 MAE per model among complete-input full_reference seed artifacts",
+        "artifacts": artifacts,
         "api_contract": "complete-input WQI5 surrogate; required features are DO, BOD, NH3N, EC, SS",
         "not_for": "missing-indicator replacement or future water-quality forecasting",
     }
@@ -328,15 +356,21 @@ def write_production_model(output_dir: Path) -> dict[str, Any]:
     return manifest
 
 
-def archive_legacy_xgboost() -> None:
-    source = PROJECT_ROOT / "models" / "XGBoost" / "modelXGBVer.1.0-50000.pkl"
-    if not source.exists():
-        return
-    target = PROJECT_ROOT / "models" / "archive" / "legacy_v1" / "XGBoost" / source.name
-    target.parent.mkdir(parents=True, exist_ok=True)
-    if target.exists():
-        return
-    shutil.move(str(source), str(target))
+def archive_legacy_50000_artifacts() -> None:
+    for model_type, directory_name in MODEL_DIR.items():
+        source_dir = PROJECT_ROOT / "models" / directory_name
+        if not source_dir.exists():
+            continue
+        archive_dir = PROJECT_ROOT / "models" / "archive" / "legacy_v1" / directory_name
+        for source in sorted(source_dir.glob("*50000.pkl")):
+            if "revision" in source.name:
+                continue
+            target = archive_dir / source.name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.exists():
+                source.unlink()
+            else:
+                shutil.move(str(source), str(target))
 
 
 def main() -> None:
@@ -385,10 +419,10 @@ def main() -> None:
         "large_artifacts_policy": "Large raw models/predictions remain under ignored results_20260614_stress/raw and are not committed.",
     }
 
-    if args.archive_legacy_xgboost:
-        archive_legacy_xgboost()
+    if args.archive_legacy_50000_artifacts:
+        archive_legacy_50000_artifacts()
     if args.update_production_model:
-        manifest["production_model"] = write_production_model(output_dir)
+        manifest["production_models"] = write_production_models(output_dir)
 
     (output_dir / "revision_manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import httpx
 import pytest
 
 from src.api import app
-from src.enums import ModelTypeEnum
-from src.services import WaterQualityService
 from src.wqi import categorize_score, direct_wqi5_score
 
 
@@ -96,11 +97,13 @@ async def test_v2_assessment_endpoint():
     assert payload["category"] in {"Excellent", "Good", "Fair", "Poor", "Bad", "Terrible"}
 
 
-def test_xgboost_revision_artifact_is_selected():
-    service = WaterQualityService()
-    artifact = service._pick_artifact(ModelTypeEnum.XGBOOST)
-    assert artifact is not None
-    assert artifact.name == "modelXGBVer.2.0-revision-50000-seed2.pkl"
+def test_production_model_manifest_lists_revision_artifacts():
+    manifest_path = Path("models/production_model_manifest.json")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    artifacts = {artifact["model_type"]: artifact for artifact in manifest["artifacts"]}
+    assert set(artifacts) == {"lightgbm", "lr", "mpr", "rf", "svm", "xgboost"}
+    assert artifacts["xgboost"]["production_artifact"] == "models/XGBoost/modelXGBVer.2.0-revision-50000-seed2.pkl"
+    assert manifest["api_contract"] == "complete-input WQI5 surrogate; required features are DO, BOD, NH3N, EC, SS"
 
 
 @pytest.mark.anyio
