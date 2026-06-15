@@ -14,9 +14,8 @@ from scipy.stats import norm
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 INPUT_CSV = (
     PROJECT_ROOT
-    / "results_20260614_stress"
-    / "raw"
-    / "results_missing_indicator_robustness_20260613_gpu_v2"
+    / "results"
+    / "missing_indicator_robustness"
     / "predictions"
     / "predictions_long.csv"
 )

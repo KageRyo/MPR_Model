@@ -1,11 +1,10 @@
 {
-  "created_at_utc": "2026-06-14T15:24:32.837612+00:00",
   "selection": "lowest external_10714 MAE per model among complete-input full_reference seed artifacts",
   "artifacts": [
     {
       "model_type": "lightgbm",
-      "production_artifact": "models/LightGBM/modelLGBMVer.2.0-revision-50000-seed0.pkl",
-      "source_artifact": "results_missing_indicator_robustness_20260613_gpu_v2/models/seed_0/full_reference/lightgbm.joblib",
+      "production_artifact": "models/LightGBM/modelLGBMVer.2.0-50000-seed0.pkl",
+      "source_artifact": "results/missing_indicator_robustness/models/seed_0/full_reference/lightgbm.joblib",
       "seed": 0,
       "source": "external_10714",
       "experiment": "full_reference",
@@ -19,8 +18,8 @@
     },
     {
       "model_type": "lr",
-      "production_artifact": "models/LR/modelLRVer.2.0-revision-50000-seed0.pkl",
-      "source_artifact": "results_missing_indicator_robustness_20260613_gpu_v2/models/seed_0/full_reference/lr.joblib",
+      "production_artifact": "models/LR/modelLRVer.2.0-50000-seed0.pkl",
+      "source_artifact": "results/missing_indicator_robustness/models/seed_0/full_reference/lr.joblib",
       "seed": 0,
       "source": "external_10714",
       "experiment": "full_reference",
@@ -34,8 +33,8 @@
     },
     {
       "model_type": "mpr",
-      "production_artifact": "models/MPR/modelMPRVer.2.0-revision-50000-seed3.pkl",
-      "source_artifact": "results_missing_indicator_robustness_20260613_gpu_v2/models/seed_3/full_reference/mpr.joblib",
+      "production_artifact": "models/MPR/modelMPRVer.2.0-50000-seed3.pkl",
+      "source_artifact": "results/missing_indicator_robustness/models/seed_3/full_reference/mpr.joblib",
       "seed": 3,
       "source": "external_10714",
       "experiment": "full_reference",
@@ -49,8 +48,8 @@
     },
     {
       "model_type": "rf",
-      "production_artifact": "models/RF/modelRFVer.2.0-revision-50000-seed0.pkl",
-      "source_artifact": "results_missing_indicator_robustness_20260613_gpu_v2/models/seed_0/full_reference/rf.joblib",
+      "production_artifact": "models/RF/modelRFVer.2.0-50000-seed0.pkl",
+      "source_artifact": "results/missing_indicator_robustness/models/seed_0/full_reference/rf.joblib",
       "seed": 0,
       "source": "external_10714",
       "experiment": "full_reference",
@@ -64,8 +63,8 @@
     },
     {
       "model_type": "svm",
-      "production_artifact": "models/SVM/modelSVMVer.2.0-revision-50000-seed3.pkl",
-      "source_artifact": "results_missing_indicator_robustness_20260613_gpu_v2/models/seed_3/full_reference/svm.joblib",
+      "production_artifact": "models/SVM/modelSVMVer.2.0-50000-seed3.pkl",
+      "source_artifact": "results/missing_indicator_robustness/models/seed_3/full_reference/svm.joblib",
       "seed": 3,
       "source": "external_10714",
       "experiment": "full_reference",
@@ -79,8 +78,8 @@
     },
     {
       "model_type": "xgboost",
-      "production_artifact": "models/XGBoost/modelXGBVer.2.0-revision-50000-seed2.pkl",
-      "source_artifact": "results_missing_indicator_robustness_20260613_gpu_v2/models/seed_2/full_reference/xgboost.joblib",
+      "production_artifact": "models/XGBoost/modelXGBVer.2.0-50000-seed2.pkl",
+      "source_artifact": "results/missing_indicator_robustness/models/seed_2/full_reference/xgboost.joblib",
       "seed": 2,
       "source": "external_10714",
       "experiment": "full_reference",

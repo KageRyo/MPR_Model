@@ -160,10 +160,10 @@ def test_reproduce_reduced_indicators_refuses_to_overwrite_existing_results(tmp_
     assert "Use --output-dir to write elsewhere or pass --overwrite explicitly" in (process.stderr or process.stdout)
 
 
-def test_revision_missing_indicator_experiments_tiny_config(tmp_path: Path) -> None:
+def test_missing_indicator_experiments_tiny_config(tmp_path: Path) -> None:
     project_root = Path(__file__).resolve().parents[1]
-    output_dir = tmp_path / "revision_missing_tiny_test"
-    config_path = tmp_path / "revision_missing_tiny_config.yaml"
+    output_dir = tmp_path / "missing_indicator_tiny_test"
+    config_path = tmp_path / "missing_indicator_tiny_config.yaml"
     config_path.write_text(
         yaml.safe_dump(
             {
@@ -200,7 +200,7 @@ def test_revision_missing_indicator_experiments_tiny_config(tmp_path: Path) -> N
     process = subprocess.run(
         [
             sys.executable,
-            "scripts/run_revision_missing_indicator_experiments.py",
+            "scripts/run_missing_indicator_experiments.py",
             "--config",
             str(config_path),
         ],
@@ -267,10 +267,10 @@ def test_revision_missing_indicator_experiments_tiny_config(tmp_path: Path) -> N
     ]:
         derived_path.unlink()
 
-    finalize_process = subprocess.run(
+    derived_process = subprocess.run(
         [
             sys.executable,
-            "scripts/finalize_revision_missing_indicator_outputs.py",
+            "scripts/prepare_missing_indicator_derived_outputs.py",
             "--output-dir",
             str(output_dir),
             "--config",
@@ -282,19 +282,19 @@ def test_revision_missing_indicator_experiments_tiny_config(tmp_path: Path) -> N
         check=False,
     )
 
-    assert finalize_process.returncode == 0, finalize_process.stderr or finalize_process.stdout
+    assert derived_process.returncode == 0, derived_process.stderr or derived_process.stdout
     assert (output_dir / "stats" / "bootstrap_ci.csv").exists()
     assert (output_dir / "stats" / "paired_error_tests.csv").exists()
     assert (output_dir / "stress_tests" / "stress_summary.csv").exists()
 
 
-def test_revision_missing_indicator_experiments_refuses_to_overwrite_existing_results(tmp_path: Path) -> None:
+def test_missing_indicator_experiments_refuses_to_overwrite_existing_results(tmp_path: Path) -> None:
     project_root = Path(__file__).resolve().parents[1]
-    output_dir = tmp_path / "existing_revision_missing_results"
+    output_dir = tmp_path / "existing_missing_indicator_results"
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "manifest.json").write_text("already-exists\n", encoding="utf-8")
 
-    config_path = tmp_path / "revision_missing_tiny_config.yaml"
+    config_path = tmp_path / "missing_indicator_tiny_config.yaml"
     config_path.write_text(
         yaml.safe_dump(
             {
@@ -320,7 +320,7 @@ def test_revision_missing_indicator_experiments_refuses_to_overwrite_existing_re
     process = subprocess.run(
         [
             sys.executable,
-            "scripts/run_revision_missing_indicator_experiments.py",
+            "scripts/run_missing_indicator_experiments.py",
             "--config",
             str(config_path),
         ],

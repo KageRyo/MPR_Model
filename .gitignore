@@ -171,8 +171,13 @@ statistics/outputs/
 !statistics/outputs/
 statistics/outputs/*
 !statistics/outputs/statistical_analysis_report.md
-!statistics/outputs/revision_*.csv
-!statistics/outputs/revision_*.json
-!statistics/outputs/revision_*.md
+!statistics/outputs/table*.csv
+!statistics/outputs/bootstrap_ci.csv
+!statistics/outputs/paired_error_tests.csv
+!statistics/outputs/metrics_by_seed.csv
+!statistics/outputs/stress107_*.csv
+!statistics/outputs/feature_score_correlations.csv
+!statistics/outputs/manifest.json
+!statistics/outputs/statistical_summary.md
 !statistics/outputs/figures/
 !statistics/outputs/figures/*.png

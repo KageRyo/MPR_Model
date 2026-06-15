@@ -29,7 +29,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from reproduce_results import build_model, require_model_support, resolve_compute_device  # noqa: E402
-from run_revision_missing_indicator_experiments import (  # noqa: E402
+from run_missing_indicator_experiments import (  # noqa: E402
     CATEGORY_ORDER,
     METRICS_FOR_CI,
     clipped_features,

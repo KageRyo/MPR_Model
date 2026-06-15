@@ -37,7 +37,7 @@ from run_missing_indicator_robustness_experiments import (  # noqa: E402
     predict_bundle,
     score_to_category,
 )
-from run_revision_missing_indicator_experiments import (  # noqa: E402
+from run_missing_indicator_experiments import (  # noqa: E402
     clipped_features,
     extract_external_set,
     output_json,

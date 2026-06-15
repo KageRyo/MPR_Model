@@ -1,0 +1,12 @@
+{
+  "bundle_dir": "results/package",
+  "output_dir": "statistics/outputs",
+  "tables": [
+    "table6_complete_input_performance.csv",
+    "table7_missing_indicator_robustness.csv",
+    "table8_cpu_only_timing.csv",
+    "table9_stress107_summary.csv",
+    "feature_score_correlations.csv"
+  ],
+  "large_artifacts_policy": "Large raw models/predictions remain under ignored results/missing_indicator_robustness and results/stress107 directories and are not committed."
+}

@@ -4,7 +4,6 @@ import argparse
 import json
 import shutil
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -40,14 +39,13 @@ MODEL_DIR = {
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Prepare the 2026-06-14 stress/missing-indicator revision outputs."
+        description="Prepare publication statistics outputs from the missing-indicator result bundle."
     )
-    parser.add_argument("--bundle-dir", default="results_20260614_stress")
+    parser.add_argument("--bundle-dir", default="results/package")
     parser.add_argument("--output-dir", default="statistics/outputs")
     parser.add_argument("--update-production-model", action="store_true")
     parser.add_argument(
         "--archive-legacy-50000-artifacts",
-        "--archive-legacy-xgboost",
         dest="archive_legacy_50000_artifacts",
         action="store_true",
     )
@@ -57,8 +55,15 @@ def parse_args() -> argparse.Namespace:
 def read_csv(csv_dir: Path, name: str) -> pd.DataFrame:
     path = csv_dir / name
     if not path.exists():
-        raise FileNotFoundError(f"Missing revision result CSV: {path}")
+        raise FileNotFoundError(f"Missing result CSV: {path}")
     return pd.read_csv(path)
+
+
+def display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
 
 
 def ci_lookup(ci: pd.DataFrame) -> dict[tuple[str, str, str, str, str, str], tuple[float, float]]:
@@ -222,30 +227,53 @@ def make_table8(cpu_timing: pd.DataFrame) -> pd.DataFrame:
 
 
 def make_stress107_summary(detection: pd.DataFrame, monotonicity: pd.DataFrame) -> pd.DataFrame:
+    detection = detection[
+        (detection["missing_set"] == "complete")
+        & (detection["experiment_mode"] == "full_reference")
+    ].copy()
+    monotonicity = monotonicity[
+        (monotonicity["missing_set"] == "complete")
+        & (monotonicity["experiment_mode"] == "full_reference")
+    ].copy()
     detection_summary = (
-        detection.groupby(["stress_scenario", "severity"], as_index=False)
+        detection.groupby(
+            ["missing_set", "experiment_mode", "model_type", "stress_scenario", "severity"],
+            as_index=False,
+        )
         .agg(
             mean_window_detection_rate_mean_decrease=("window_detection_rate_mean_decrease", "mean"),
             mean_window_detection_rate_drop_ge_1=("window_detection_rate_drop_ge_1", "mean"),
+            mean_window_detection_rate_any_category_worse=("window_detection_rate_any_category_worse", "mean"),
             mean_pct_category_worse=("mean_pct_category_worse", "mean"),
+            mean_pct_score_decreased=("mean_pct_score_decreased", "mean"),
+            mean_pct_drop_ge_1=("mean_pct_drop_ge_1", "mean"),
+            mean_pct_drop_ge_5=("mean_pct_drop_ge_5", "mean"),
             mean_score_drop=("mean_score_drop", "mean"),
+            mean_delta_score=("mean_delta_score", "mean"),
         )
     )
     mono_summary = (
-        monotonicity.groupby("stress_scenario", as_index=False)
+        monotonicity.groupby(
+            ["missing_set", "experiment_mode", "model_type", "stress_scenario"],
+            as_index=False,
+        )
         .agg(
             mean_severity_monotonicity_rate_drop=("severity_monotonicity_rate_drop", "mean"),
             min_severity_monotonicity_rate_drop=("severity_monotonicity_rate_drop", "min"),
         )
     )
-    return detection_summary.merge(mono_summary, on="stress_scenario", how="left")
+    return detection_summary.merge(
+        mono_summary,
+        on=["missing_set", "experiment_mode", "model_type", "stress_scenario"],
+        how="left",
+    ).sort_values(["model_type", "stress_scenario", "severity"])
 
 
 def make_feature_score_correlations() -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     datasets = {
         "processed_60714": PROJECT_ROOT / "data" / "dataV1.csv",
-        "revision_subset_50000": PROJECT_ROOT / "data" / "dataV1_50000.csv",
+        "subset_50000": PROJECT_ROOT / "data" / "dataV1_50000.csv",
     }
     for dataset_name, path in datasets.items():
         frame = pd.read_csv(path)
@@ -279,11 +307,11 @@ def write_report(
         & (table7["experiment_mode"] == "reduced_retraining")
     ].head(1)
     lines = [
-        "# Revision Statistical Summary",
+        "# Statistical Summary",
         "",
         "## Scope",
         "",
-        "This report freezes the 2026-06-14 missing-indicator robustness, Stress107, and CPU-only timing outputs.",
+        "This report summarizes the missing-indicator robustness, Stress107, and CPU-only timing outputs.",
         "It replaces the earlier percentage-agreement tables with R2, MAE, RMSE, Macro-F1, bootstrap confidence intervals, and paired model tests.",
         "",
         "The task remains WQI5 surrogate regression, not future water-quality forecasting. Direct WQI5 computation remains the reference method when all five indicators are available.",
@@ -309,24 +337,24 @@ def write_report(
             "",
             "## Output Tables",
             "",
-            "- `revision_table6_complete_input_performance.csv`",
-            "- `revision_table7_missing_indicator_robustness.csv`",
-            "- `revision_table8_cpu_only_timing.csv`",
-            "- `revision_table9_stress107_summary.csv`",
-            "- `revision_feature_score_correlations.csv`",
-            "- `revision_bootstrap_ci.csv`",
-            "- `revision_paired_error_tests.csv`",
+            "- `table6_complete_input_performance.csv`",
+            "- `table7_missing_indicator_robustness.csv`",
+            "- `table8_cpu_only_timing.csv`",
+            "- `table9_stress107_summary.csv`",
+            "- `feature_score_correlations.csv`",
+            "- `bootstrap_ci.csv`",
+            "- `paired_error_tests.csv`",
             "",
             "## Reporting Boundary",
             "",
             "Stress107 reduces dependence on a single selected middle window, but it does not prove absence of all sampling bias and is not a real pollution-event validation.",
         ]
     )
-    (output_dir / "revision_statistical_summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (output_dir / "statistical_summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def write_production_models(output_dir: Path) -> dict[str, Any]:
-    seed_metrics = pd.read_csv(output_dir / "revision_metrics_by_seed.csv")
+    seed_metrics = pd.read_csv(output_dir / "metrics_by_seed.csv")
     full_reference = seed_metrics[
         (seed_metrics["source"] == "external_10714")
         & (seed_metrics["experiment"] == "full_reference")
@@ -346,14 +374,14 @@ def write_production_models(output_dir: Path) -> dict[str, Any]:
 
         target_dir = PROJECT_ROOT / "models" / MODEL_DIR[model_type]
         target_dir.mkdir(parents=True, exist_ok=True)
-        target_path = target_dir / f"{MODEL_ARTIFACT_PREFIX[model_type]}Ver.2.0-revision-50000-seed{int(selected['seed'])}.pkl"
+        target_path = target_dir / f"{MODEL_ARTIFACT_PREFIX[model_type]}Ver.2.0-50000-seed{int(selected['seed'])}.pkl"
         joblib.dump(model, target_path)
 
         artifacts.append(
             {
                 "model_type": model_type,
                 "production_artifact": str(target_path.relative_to(PROJECT_ROOT)),
-                "source_artifact": str(bundle_path.relative_to(PROJECT_ROOT)),
+                "source_artifact": display_path(bundle_path),
                 "seed": int(selected["seed"]),
                 "source": str(selected["source"]),
                 "experiment": str(selected["experiment"]),
@@ -368,7 +396,6 @@ def write_production_models(output_dir: Path) -> dict[str, Any]:
         )
 
     manifest = {
-        "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "selection": "lowest external_10714 MAE per model among complete-input full_reference seed artifacts",
         "artifacts": artifacts,
         "api_contract": "complete-input WQI5 surrogate; required features are DO, BOD, NH3N, EC, SS",
@@ -385,8 +412,8 @@ def archive_legacy_50000_artifacts() -> None:
         if not source_dir.exists():
             continue
         archive_dir = PROJECT_ROOT / "models" / "archive" / "legacy_v1" / directory_name
-        for source in sorted(source_dir.glob("*50000.pkl")):
-            if "revision" in source.name:
+        for source in sorted(source_dir.glob("*50000*.pkl")):
+            if "-seed" in source.name:
                 continue
             target = archive_dir / source.name
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -403,12 +430,12 @@ def main() -> None:
     output_dir = (PROJECT_ROOT / args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    best = read_csv(csv_dir, "v2_best_by_experiment_source.csv")
-    metrics_summary = read_csv(csv_dir, "v2_metrics_summary.csv")
-    metrics_by_seed = read_csv(csv_dir, "v2_metrics_by_seed.csv")
-    bootstrap_ci = read_csv(csv_dir, "v2_bootstrap_ci.csv")
-    paired_tests = read_csv(csv_dir, "v2_paired_error_tests.csv")
-    cpu_timing = read_csv(csv_dir, "v2_cpu_only_inference_timing_summary.csv")
+    best = read_csv(csv_dir, "missing_indicator_best_by_experiment_source.csv")
+    metrics_summary = read_csv(csv_dir, "missing_indicator_metrics_summary.csv")
+    metrics_by_seed = read_csv(csv_dir, "missing_indicator_metrics_by_seed.csv")
+    bootstrap_ci = read_csv(csv_dir, "missing_indicator_bootstrap_ci.csv")
+    paired_tests = read_csv(csv_dir, "missing_indicator_paired_error_tests.csv")
+    cpu_timing = read_csv(csv_dir, "cpu_only_inference_timing_summary.csv")
     stress_detection = read_csv(csv_dir, "stress107_detection_summary.csv")
     stress_mono = read_csv(csv_dir, "stress107_severity_monotonicity.csv")
 
@@ -418,31 +445,30 @@ def main() -> None:
     table9 = make_stress107_summary(stress_detection, stress_mono)
     correlations = make_feature_score_correlations()
 
-    table6.to_csv(output_dir / "revision_table6_complete_input_performance.csv", index=False)
-    table7.to_csv(output_dir / "revision_table7_missing_indicator_robustness.csv", index=False)
-    table8.to_csv(output_dir / "revision_table8_cpu_only_timing.csv", index=False)
-    table9.to_csv(output_dir / "revision_table9_stress107_summary.csv", index=False)
-    bootstrap_ci.to_csv(output_dir / "revision_bootstrap_ci.csv", index=False)
-    paired_tests.to_csv(output_dir / "revision_paired_error_tests.csv", index=False)
-    metrics_by_seed.to_csv(output_dir / "revision_metrics_by_seed.csv", index=False)
-    stress_detection.to_csv(output_dir / "revision_stress107_detection_summary.csv", index=False)
-    stress_mono.to_csv(output_dir / "revision_stress107_severity_monotonicity.csv", index=False)
-    correlations.to_csv(output_dir / "revision_feature_score_correlations.csv", index=False)
+    table6.to_csv(output_dir / "table6_complete_input_performance.csv", index=False)
+    table7.to_csv(output_dir / "table7_missing_indicator_robustness.csv", index=False)
+    table8.to_csv(output_dir / "table8_cpu_only_timing.csv", index=False)
+    table9.to_csv(output_dir / "table9_stress107_summary.csv", index=False)
+    bootstrap_ci.to_csv(output_dir / "bootstrap_ci.csv", index=False)
+    paired_tests.to_csv(output_dir / "paired_error_tests.csv", index=False)
+    metrics_by_seed.to_csv(output_dir / "metrics_by_seed.csv", index=False)
+    stress_detection.to_csv(output_dir / "stress107_detection_summary.csv", index=False)
+    stress_mono.to_csv(output_dir / "stress107_severity_monotonicity.csv", index=False)
+    correlations.to_csv(output_dir / "feature_score_correlations.csv", index=False)
 
     write_report(output_dir, table6, table7, table8, table9)
 
     manifest: dict[str, Any] = {
-        "created_at_utc": datetime.now(timezone.utc).isoformat(),
-        "bundle_dir": str(bundle_dir.relative_to(PROJECT_ROOT)),
-        "output_dir": str(output_dir.relative_to(PROJECT_ROOT)),
+        "bundle_dir": display_path(bundle_dir),
+        "output_dir": display_path(output_dir),
         "tables": [
-            "revision_table6_complete_input_performance.csv",
-            "revision_table7_missing_indicator_robustness.csv",
-            "revision_table8_cpu_only_timing.csv",
-            "revision_table9_stress107_summary.csv",
-            "revision_feature_score_correlations.csv",
+            "table6_complete_input_performance.csv",
+            "table7_missing_indicator_robustness.csv",
+            "table8_cpu_only_timing.csv",
+            "table9_stress107_summary.csv",
+            "feature_score_correlations.csv",
         ],
-        "large_artifacts_policy": "Large raw models/predictions remain under ignored results_20260614_stress/raw and are not committed.",
+        "large_artifacts_policy": "Large raw models/predictions remain under ignored results/missing_indicator_robustness and results/stress107 directories and are not committed.",
     }
 
     if args.archive_legacy_50000_artifacts:
@@ -450,11 +476,11 @@ def main() -> None:
     if args.update_production_model:
         manifest["production_models"] = write_production_models(output_dir)
 
-    (output_dir / "revision_manifest.json").write_text(
+    (output_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-    logger.success(f"Revision outputs written to {output_dir}")
+    logger.success(f"Statistics outputs written to {output_dir}")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 dataset_50000: data/dataV1_50000.csv
 full_dataset: data/dataV1.csv
-output_dir: results_missing_indicator_robustness
+output_dir: results/missing_indicator_robustness_run
 test_size: 0.2
 expected_external_rows: 10714
 external_max_rows:

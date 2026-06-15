@@ -19,7 +19,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from run_revision_missing_indicator_experiments import (  # noqa: E402
+from run_missing_indicator_experiments import (  # noqa: E402
     FULL_DROPOUT,
     FULL_REFERENCE,
     REDUCED_RETRAINING,
@@ -130,7 +130,7 @@ def main() -> None:
     write_csv(output_dir / "stats" / "bootstrap_ci.csv", bootstrap_ci_from_metric_rows(metric_rows, n_bootstrap))
     write_csv(output_dir / "stats" / "paired_error_tests.csv", paired_tests_from_metric_rows(metric_rows))
     write_csv(output_dir / "stress_tests" / "stress_summary.csv", recompute_stress_rows(output_dir, config, manifest))
-    logger.success(f"finalized derived outputs in: {output_dir}")
+    logger.success(f"Derived outputs written to: {output_dir}")
 
 
 if __name__ == "__main__":
