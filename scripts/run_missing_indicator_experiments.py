@@ -86,7 +86,7 @@ class VersionsSchema(BaseModel):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/revision_missing_indicator_config.yaml")
+    parser.add_argument("--config", default="configs/missing_indicator_config.yaml")
     parser.add_argument("--output-dir", default=None)
     parser.add_argument("--compute-device", choices=["cpu", "gpu", "auto"], default=None)
     parser.add_argument("--gpu-id", type=int, default=None)

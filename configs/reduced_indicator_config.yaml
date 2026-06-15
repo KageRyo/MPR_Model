@@ -1,5 +1,5 @@
 dataset: data/dataV1.csv
-output_dir: results_reduced_indicators
+output_dir: results/reduced_indicator_run
 test_size: 0.2
 compute_device: cpu
 gpu_id: 0

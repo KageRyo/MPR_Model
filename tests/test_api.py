@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import httpx
 import pytest
 
@@ -92,6 +95,15 @@ async def test_v2_assessment_endpoint():
     payload = response.json()
     assert payload["model_type"] == "direct_wqi5"
     assert payload["category"] in {"Excellent", "Good", "Fair", "Poor", "Bad", "Terrible"}
+
+
+def test_production_model_manifest_lists_current_artifacts():
+    manifest_path = Path("models/production_model_manifest.json")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    artifacts = {artifact["model_type"]: artifact for artifact in manifest["artifacts"]}
+    assert set(artifacts) == {"lightgbm", "lr", "mpr", "rf", "svm", "xgboost"}
+    assert artifacts["xgboost"]["production_artifact"] == "models/XGBoost/modelXGBVer.2.0-50000-seed2.pkl"
+    assert manifest["api_contract"] == "complete-input WQI5 surrogate; required features are DO, BOD, NH3N, EC, SS"
 
 
 @pytest.mark.anyio

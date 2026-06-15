@@ -1,0 +1,97 @@
+{
+  "selection": "lowest external_10714 MAE per model among complete-input full_reference seed artifacts",
+  "artifacts": [
+    {
+      "model_type": "lightgbm",
+      "production_artifact": "models/LightGBM/modelLGBMVer.2.0-50000-seed0.pkl",
+      "source_artifact": "results/missing_indicator_robustness/models/seed_0/full_reference/lightgbm.joblib",
+      "seed": 0,
+      "source": "external_10714",
+      "experiment": "full_reference",
+      "metrics": {
+        "r2": 0.9990805813423108,
+        "mae": 0.2754741558113605,
+        "rmse": 0.4574966973856394,
+        "accuracy": 0.9869329848795968,
+        "macro_f1": 0.9684811486904992
+      }
+    },
+    {
+      "model_type": "lr",
+      "production_artifact": "models/LR/modelLRVer.2.0-50000-seed0.pkl",
+      "source_artifact": "results/missing_indicator_robustness/models/seed_0/full_reference/lr.joblib",
+      "seed": 0,
+      "source": "external_10714",
+      "experiment": "full_reference",
+      "metrics": {
+        "r2": 0.7202374432792198,
+        "mae": 6.4482568062492645,
+        "rmse": 7.980426482584659,
+        "accuracy": 0.6530707485532947,
+        "macro_f1": 0.36447238201456
+      }
+    },
+    {
+      "model_type": "mpr",
+      "production_artifact": "models/MPR/modelMPRVer.2.0-50000-seed3.pkl",
+      "source_artifact": "results/missing_indicator_robustness/models/seed_3/full_reference/mpr.joblib",
+      "seed": 3,
+      "source": "external_10714",
+      "experiment": "full_reference",
+      "metrics": {
+        "r2": 0.8495151243723684,
+        "mae": 4.7018059945892094,
+        "rmse": 5.85298934928517,
+        "accuracy": 0.6777114056374837,
+        "macro_f1": 0.5077984229109285
+      }
+    },
+    {
+      "model_type": "rf",
+      "production_artifact": "models/RF/modelRFVer.2.0-50000-seed0.pkl",
+      "source_artifact": "results/missing_indicator_robustness/models/seed_0/full_reference/rf.joblib",
+      "seed": 0,
+      "source": "external_10714",
+      "experiment": "full_reference",
+      "metrics": {
+        "r2": 0.99778224351677,
+        "mae": 0.3956594238068575,
+        "rmse": 0.7105395158695222,
+        "accuracy": 0.9795594549187978,
+        "macro_f1": 0.9011470974121586
+      }
+    },
+    {
+      "model_type": "svm",
+      "production_artifact": "models/SVM/modelSVMVer.2.0-50000-seed3.pkl",
+      "source_artifact": "results/missing_indicator_robustness/models/seed_3/full_reference/svm.joblib",
+      "seed": 3,
+      "source": "external_10714",
+      "experiment": "full_reference",
+      "metrics": {
+        "r2": 0.9653924714161132,
+        "mae": 2.1114846808410697,
+        "rmse": 2.8068331695170663,
+        "accuracy": 0.9007840209072242,
+        "macro_f1": 0.7860814359341995
+      }
+    },
+    {
+      "model_type": "xgboost",
+      "production_artifact": "models/XGBoost/modelXGBVer.2.0-50000-seed2.pkl",
+      "source_artifact": "results/missing_indicator_robustness/models/seed_2/full_reference/xgboost.joblib",
+      "seed": 2,
+      "source": "external_10714",
+      "experiment": "full_reference",
+      "metrics": {
+        "r2": 0.9993356816434588,
+        "mae": 0.2448908820836784,
+        "rmse": 0.3888834254541707,
+        "accuracy": 0.9899197311928318,
+        "macro_f1": 0.9705477392431336
+      }
+    }
+  ],
+  "api_contract": "complete-input WQI5 surrogate; required features are DO, BOD, NH3N, EC, SS",
+  "not_for": "missing-indicator replacement or future water-quality forecasting"
+}
