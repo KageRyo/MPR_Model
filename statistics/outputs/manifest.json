@@ -1,5 +1,6 @@
 {
   "bundle_dir": "results/package",
+  "complete_input_gpu_dir": "results/complete_input_gpu",
   "output_dir": "statistics/outputs",
   "outputs": [
     "complete_input_performance.csv",
@@ -13,7 +14,7 @@
   ],
   "sample_size_metrics_source": "results/sample_size_experiments/metrics",
   "sample_size_outputs_scope": "requested 1,000, 10,000, and 50,000 row settings; local 5,000 row results are excluded from the publication-facing sample-size CSVs.",
-  "paired_error_tests_source": "results/package/organized/csv/missing_indicator_metrics_by_seed.csv",
-  "paired_error_tests_method": "Reported p_value is the Holm-adjusted exact two-sided Wilcoxon signed-rank p-value over paired seed-level external hold-out MAE values. Holm correction is applied within each source/missing_set/experiment_mode/experiment model-comparison family.",
+  "paired_error_tests_source": "results/complete_input_gpu/repeated_split_results.csv",
+  "paired_error_tests_method": "Reported p-value is the Holm-adjusted paired t-test p-value over complete-input GPU repeated-split MAE values. Rows are paired by seed, and Holm correction is applied across the 15 trainable-model comparisons.",
   "large_artifacts_policy": "Large raw models/predictions remain under ignored results/missing_indicator_robustness and results/stress107 directories and are not committed."
 }
