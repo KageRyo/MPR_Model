@@ -78,6 +78,54 @@ def test_reproduce_results_refuses_to_overwrite_existing_results(tmp_path: Path)
     assert "Use --output-dir to write elsewhere or pass --overwrite explicitly" in (process.stderr or process.stdout)
 
 
+def test_sample_size_experiments_tiny_workflow(tmp_path: Path) -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    output_dir = tmp_path / "sample_size_results"
+    model_dir = tmp_path / "sample_size_models"
+
+    process = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_sample_size_experiments.py",
+            "--datasets",
+            "data/dataV1_1000.csv",
+            "--models",
+            "lr",
+            "--n-splits",
+            "2",
+            "--output-dir",
+            str(output_dir),
+            "--model-dir",
+            str(model_dir),
+            "--compute-device",
+            "cpu",
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert process.returncode == 0, process.stderr or process.stdout
+    expected_files = {
+        "manifest.json",
+        "metrics/metrics_by_fold.csv",
+        "metrics/metrics_summary.csv",
+        "splits/split_indices.csv",
+    }
+    assert expected_files.issubset(
+        {str(path.relative_to(output_dir)) for path in output_dir.rglob("*") if path.is_file()}
+    )
+    assert (model_dir / "LR" / "dataV1_1000" / "fold_1" / "lr.pkl").exists()
+    assert (model_dir / "LR" / "dataV1_1000" / "fold_2" / "lr.pkl").exists()
+
+    with (output_dir / "metrics" / "metrics_by_fold.csv").open("r", encoding="utf-8") as handle:
+        metric_rows = list(csv.DictReader(handle))
+    assert len(metric_rows) == 4
+    assert {"r2", "mae", "rmse", "split", "artifact_path"}.issubset(metric_rows[0])
+    assert {row["split"] for row in metric_rows} == {"train", "test"}
+
+
 def test_reproduce_reduced_indicators_tiny_config(tmp_path: Path) -> None:
     project_root = Path(__file__).resolve().parents[1]
     output_dir = tmp_path / "reduced_tiny_test"
