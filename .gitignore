@@ -165,13 +165,17 @@ results_*/
 
 # Local model artifacts
 models/**/*.pkl
+archive/sample_size_raw_runs/
 
 # Generated statistical-analysis outputs
 statistics/outputs/
 !statistics/outputs/
 statistics/outputs/*
 !statistics/outputs/statistical_analysis_report.md
-!statistics/outputs/table*.csv
+!statistics/outputs/complete_input_performance.csv
+!statistics/outputs/missing_indicator_robustness.csv
+!statistics/outputs/cpu_only_timing.csv
+!statistics/outputs/stress107_summary.csv
 !statistics/outputs/bootstrap_ci.csv
 !statistics/outputs/paired_error_tests.csv
 !statistics/outputs/metrics_by_seed.csv

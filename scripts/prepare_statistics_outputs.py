@@ -1,23 +1,27 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
+import math
 import shutil
 import sys
 from pathlib import Path
 from typing import Any
 
 import joblib
+import numpy as np
 import pandas as pd
 from loguru import logger
+from scipy.stats import t, wilcoxon
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-METRICS_FOR_TABLES = ["r2", "mae", "rmse", "accuracy", "macro_f1"]
-TABLE6_METRICS = ["r2", "mae", "rmse", "macro_f1"]
+METRICS_FOR_OUTPUTS = ["r2", "mae", "rmse", "accuracy", "macro_f1"]
+COMPLETE_INPUT_METRICS = ["r2", "mae", "rmse", "macro_f1"]
 FEATURE_COLUMNS = ["DO", "BOD", "NH3N", "EC", "SS"]
 MODEL_ARTIFACT_PREFIX = {
     "lightgbm": "modelLGBM",
@@ -43,6 +47,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--bundle-dir", default="results/package")
     parser.add_argument("--output-dir", default="statistics/outputs")
+    parser.add_argument(
+        "--predictions-csv",
+        default="results/missing_indicator_robustness/predictions/predictions_long.csv",
+        help="Prediction rows used for hold-out paired absolute-error tests.",
+    )
     parser.add_argument("--update-production-model", action="store_true")
     parser.add_argument(
         "--archive-legacy-50000-artifacts",
@@ -64,6 +73,149 @@ def display_path(path: Path) -> str:
         return str(path.relative_to(PROJECT_ROOT))
     except ValueError:
         return str(path)
+
+
+def holm_adjust(p_values: list[float]) -> list[float]:
+    adjusted = [np.nan] * len(p_values)
+    valid = [(idx, value) for idx, value in enumerate(p_values) if pd.notna(value)]
+    ordered = sorted(valid, key=lambda item: item[1])
+    running = 0.0
+    m = len(ordered)
+    for rank, (idx, value) in enumerate(ordered, start=1):
+        corrected = min(1.0, (m - rank + 1) * value)
+        running = max(running, corrected)
+        adjusted[idx] = running
+    return adjusted
+
+
+def format_p_value(value: float | None) -> str:
+    if value is None or pd.isna(value):
+        return ""
+    if value == 0.0:
+        return "<1e-300"
+    return format(float(value), ".17g")
+
+
+def mean_diff_ci(diff: np.ndarray, confidence: float = 0.95) -> tuple[float, float]:
+    if len(diff) < 2:
+        return (np.nan, np.nan)
+    mean = float(np.mean(diff))
+    sem = float(np.std(diff, ddof=1) / math.sqrt(len(diff)))
+    critical = float(t.ppf((1.0 + confidence) / 2.0, df=len(diff) - 1))
+    return (mean - critical * sem, mean + critical * sem)
+
+
+def paired_comparison_result(model_a: str, model_b: str, mean_diff: float, significant: bool) -> str:
+    lower_model = model_a if mean_diff < 0 else model_b
+    if significant:
+        return f"{lower_model} has significantly lower mean absolute error"
+    return f"not significant; lower mean absolute error: {lower_model}"
+
+
+def paired_tests_from_prediction_rows(predictions_csv: Path, source: str = "external_10714") -> pd.DataFrame:
+    usecols = [
+        "source",
+        "missing_set",
+        "experiment_mode",
+        "experiment",
+        "seed",
+        "model_type",
+        "row_id",
+        "abs_error",
+    ]
+    predictions = pd.read_csv(predictions_csv, usecols=usecols)
+    predictions = predictions[predictions["source"] == source].copy()
+    predictions["abs_error"] = predictions["abs_error"].astype(float)
+
+    pending: list[dict[str, Any]] = []
+    p_values: list[float] = []
+    group_columns = ["source", "missing_set", "experiment_mode", "experiment"]
+    for keys, group in predictions.groupby(group_columns, sort=True):
+        group_source, missing_set, mode, experiment = keys
+        wide = group.pivot_table(
+            index=["seed", "row_id"],
+            columns="model_type",
+            values="abs_error",
+            aggfunc="first",
+        )
+        for model_a, model_b in itertools.combinations(sorted(wide.columns), 2):
+            paired = wide[[model_a, model_b]].dropna()
+            diff = (paired[model_a] - paired[model_b]).to_numpy(dtype=float)
+            if len(diff) == 0:
+                p_value = np.nan
+                mean_diff = np.nan
+                ci_low = np.nan
+                ci_high = np.nan
+                mean_a = np.nan
+                mean_b = np.nan
+            else:
+                mean_diff = float(np.mean(diff))
+                ci_low, ci_high = mean_diff_ci(diff)
+                mean_a = float(paired[model_a].mean())
+                mean_b = float(paired[model_b].mean())
+                try:
+                    _, p_value = wilcoxon(diff, zero_method="wilcox", alternative="two-sided", method="asymptotic")
+                except ValueError:
+                    p_value = np.nan
+            pending.append(
+                {
+                    "source": group_source,
+                    "missing_set": missing_set,
+                    "experiment_mode": mode,
+                    "experiment": experiment,
+                    "metric": "absolute_error",
+                    "model_a": model_a,
+                    "model_b": model_b,
+                    "n_pairs": int(len(diff)),
+                    "mean_absolute_error_a": mean_a,
+                    "mean_absolute_error_b": mean_b,
+                    "mean_difference_a_minus_b": mean_diff,
+                    "mean_difference_ci95_low": ci_low,
+                    "mean_difference_ci95_high": ci_high,
+                    "wilcoxon_p_value": p_value,
+                    "lower_mean_error_model": model_a if len(diff) and mean_diff < 0 else model_b,
+                }
+            )
+            p_values.append(p_value)
+
+    adjusted = holm_adjust(p_values)
+    for row, p_adj in zip(pending, adjusted):
+        significant = bool(p_adj < 0.05) if pd.notna(p_adj) else False
+        row["holm_adjusted_p_value"] = p_adj
+        row["wilcoxon_p_value_formatted"] = format_p_value(row["wilcoxon_p_value"])
+        row["holm_adjusted_p_value_formatted"] = format_p_value(p_adj)
+        row["model_comparison_result"] = paired_comparison_result(
+            str(row["model_a"]),
+            str(row["model_b"]),
+            float(row["mean_difference_a_minus_b"]),
+            significant,
+        )
+        row["significant_at_0_05"] = significant
+
+    output = pd.DataFrame(pending)
+    columns = [
+        "source",
+        "missing_set",
+        "experiment_mode",
+        "experiment",
+        "metric",
+        "model_a",
+        "model_b",
+        "n_pairs",
+        "mean_absolute_error_a",
+        "mean_absolute_error_b",
+        "mean_difference_a_minus_b",
+        "mean_difference_ci95_low",
+        "mean_difference_ci95_high",
+        "wilcoxon_p_value",
+        "wilcoxon_p_value_formatted",
+        "holm_adjusted_p_value",
+        "holm_adjusted_p_value_formatted",
+        "lower_mean_error_model",
+        "model_comparison_result",
+        "significant_at_0_05",
+    ]
+    return output[columns].sort_values(["missing_set", "experiment_mode", "experiment", "model_a", "model_b"])
 
 
 def ci_lookup(ci: pd.DataFrame) -> dict[tuple[str, str, str, str, str, str], tuple[float, float]]:
@@ -104,13 +256,13 @@ def add_ci_columns(frame: pd.DataFrame, ci: pd.DataFrame, metrics: list[str]) ->
     return out
 
 
-def make_table6(metrics_summary: pd.DataFrame, ci: pd.DataFrame) -> pd.DataFrame:
-    table = metrics_summary[
+def make_complete_input_performance(metrics_summary: pd.DataFrame, ci: pd.DataFrame) -> pd.DataFrame:
+    output = metrics_summary[
         (metrics_summary["source"] == "external_10714")
         & (metrics_summary["missing_set"] == "complete")
         & (metrics_summary["experiment_mode"] == "full_reference")
     ].copy()
-    table = add_ci_columns(table, ci, TABLE6_METRICS)
+    output = add_ci_columns(output, ci, COMPLETE_INPUT_METRICS)
     columns = [
         "model_type",
         "n_runs",
@@ -131,7 +283,7 @@ def make_table6(metrics_summary: pd.DataFrame, ci: pd.DataFrame) -> pd.DataFrame
         "latency_s_mean",
         "training_s_mean",
     ]
-    return table[columns].sort_values(["mae_mean", "rmse_mean", "model_type"])
+    return output[columns].sort_values(["mae_mean", "rmse_mean", "model_type"])
 
 
 def interpretation_for(row: pd.Series) -> str:
@@ -155,10 +307,10 @@ def interpretation_for(row: pd.Series) -> str:
     return "deployment-constrained auxiliary result; interpret conservatively"
 
 
-def make_table7(best: pd.DataFrame, ci: pd.DataFrame) -> pd.DataFrame:
-    table = best[best["source"] == "external_10714"].copy()
-    table = add_ci_columns(table, ci, ["r2", "mae", "rmse", "macro_f1"])
-    table["available_indicators"] = table["missing_set"].map(
+def make_missing_indicator_robustness(best: pd.DataFrame, ci: pd.DataFrame) -> pd.DataFrame:
+    output = best[best["source"] == "external_10714"].copy()
+    output = add_ci_columns(output, ci, ["r2", "mae", "rmse", "macro_f1"])
+    output["available_indicators"] = output["missing_set"].map(
         {
             "complete": "DO / BOD / NH3N / EC / SS",
             "missing_bod": "DO / NH3N / EC / SS",
@@ -166,14 +318,14 @@ def make_table7(best: pd.DataFrame, ci: pd.DataFrame) -> pd.DataFrame:
             "missing_bod_nh3n": "DO / EC / SS",
         }
     )
-    table["interpretation"] = table.apply(interpretation_for, axis=1)
+    output["interpretation"] = output.apply(interpretation_for, axis=1)
     order = {
         "full_reference": 0,
         "inference_dropout": 1,
         "reduced_retraining": 2,
         "indicator_reconstruction": 3,
     }
-    table["mode_order"] = table["experiment_mode"].map(order).fillna(99)
+    output["mode_order"] = output["experiment_mode"].map(order).fillna(99)
     columns = [
         "missing_set",
         "experiment_mode",
@@ -194,10 +346,10 @@ def make_table7(best: pd.DataFrame, ci: pd.DataFrame) -> pd.DataFrame:
         "accuracy_mean",
         "interpretation",
     ]
-    return table.sort_values(["missing_set", "mode_order", "mae_mean"])[columns]
+    return output.sort_values(["missing_set", "mode_order", "mae_mean"])[columns]
 
 
-def make_table8(cpu_timing: pd.DataFrame) -> pd.DataFrame:
+def make_cpu_only_timing(cpu_timing: pd.DataFrame) -> pd.DataFrame:
     out = cpu_timing.copy()
     if "latency_s_mean" in out.columns:
         out["throughput_rows_per_s_mean"] = out["n_rows"] / out["latency_s_mean"]
@@ -290,21 +442,55 @@ def make_feature_score_correlations() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def paired_summary_markdown(paired_tests: pd.DataFrame) -> list[str]:
+    subset = paired_tests[
+        (paired_tests["source"] == "external_10714")
+        & (paired_tests["missing_set"] == "complete")
+        & (paired_tests["experiment_mode"] == "full_reference")
+        & (paired_tests["experiment"] == "full_reference")
+    ].copy()
+    if subset.empty:
+        return []
+    lines = [
+        "## Pairwise Error Tests",
+        "",
+        "Complete-input full-reference comparisons use external hold-out row absolute-error differences. Negative A-B values favor model A; positive values favor model B.",
+        "",
+        "| Comparison | Mean absolute-error difference (A - B) | 95% CI | Holm p | Result | Significant |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for _, row in subset.iterrows():
+        comparison = f"{row['model_a']} vs {row['model_b']}"
+        mean_diff = format(float(row["mean_difference_a_minus_b"]), ".6g")
+        ci = (
+            f"[{format(float(row['mean_difference_ci95_low']), '.6g')}, "
+            f"{format(float(row['mean_difference_ci95_high']), '.6g')}]"
+        )
+        significant = "yes" if bool(row["significant_at_0_05"]) else "no"
+        lines.append(
+            f"| {comparison} | {mean_diff} | {ci} | {row['holm_adjusted_p_value_formatted']} | "
+            f"{row['model_comparison_result']} | {significant} |"
+        )
+    lines.append("")
+    return lines
+
+
 def write_report(
     output_dir: Path,
-    table6: pd.DataFrame,
-    table7: pd.DataFrame,
-    table8: pd.DataFrame,
+    complete_input_performance: pd.DataFrame,
+    missing_indicator_robustness: pd.DataFrame,
+    cpu_only_timing: pd.DataFrame,
     stress_summary: pd.DataFrame,
+    paired_tests: pd.DataFrame,
 ) -> None:
-    best_full = table6.iloc[0]
-    missing_nh3n = table7[
-        (table7["missing_set"] == "missing_nh3n")
-        & (table7["experiment_mode"] == "reduced_retraining")
+    best_full = complete_input_performance.iloc[0]
+    missing_nh3n = missing_indicator_robustness[
+        (missing_indicator_robustness["missing_set"] == "missing_nh3n")
+        & (missing_indicator_robustness["experiment_mode"] == "reduced_retraining")
     ].head(1)
-    missing_bod_nh3n = table7[
-        (table7["missing_set"] == "missing_bod_nh3n")
-        & (table7["experiment_mode"] == "reduced_retraining")
+    missing_bod_nh3n = missing_indicator_robustness[
+        (missing_indicator_robustness["missing_set"] == "missing_bod_nh3n")
+        & (missing_indicator_robustness["experiment_mode"] == "reduced_retraining")
     ].head(1)
     lines = [
         "# Statistical Summary",
@@ -334,17 +520,23 @@ def write_report(
         [
             "- Stress107 uses 107 sequential event windows, not 107-fold cross-validation.",
             "- CPU-only timing is the deployment-oriented inference-time reference; GPU/multicore acceleration is acceptable for experiment reproduction.",
+            "- Pairwise model comparisons use external hold-out row absolute-error differences with Wilcoxon signed-rank tests and Holm correction.",
             "",
-            "## Output Tables",
+            "## Output Files",
             "",
-            "- `table6_complete_input_performance.csv`",
-            "- `table7_missing_indicator_robustness.csv`",
-            "- `table8_cpu_only_timing.csv`",
-            "- `table9_stress107_summary.csv`",
+            "- `complete_input_performance.csv`",
+            "- `missing_indicator_robustness.csv`",
+            "- `cpu_only_timing.csv`",
+            "- `stress107_summary.csv`",
             "- `feature_score_correlations.csv`",
             "- `bootstrap_ci.csv`",
             "- `paired_error_tests.csv`",
             "",
+        ]
+    )
+    lines.extend(paired_summary_markdown(paired_tests))
+    lines.extend(
+        [
             "## Reporting Boundary",
             "",
             "Stress107 reduces dependence on a single selected middle window, but it does not prove absence of all sampling bias and is not a real pollution-event validation.",
@@ -428,27 +620,28 @@ def main() -> None:
     bundle_dir = (PROJECT_ROOT / args.bundle_dir).resolve()
     csv_dir = bundle_dir / "organized" / "csv"
     output_dir = (PROJECT_ROOT / args.output_dir).resolve()
+    predictions_csv = (PROJECT_ROOT / args.predictions_csv).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
     best = read_csv(csv_dir, "missing_indicator_best_by_experiment_source.csv")
     metrics_summary = read_csv(csv_dir, "missing_indicator_metrics_summary.csv")
     metrics_by_seed = read_csv(csv_dir, "missing_indicator_metrics_by_seed.csv")
     bootstrap_ci = read_csv(csv_dir, "missing_indicator_bootstrap_ci.csv")
-    paired_tests = read_csv(csv_dir, "missing_indicator_paired_error_tests.csv")
+    paired_tests = paired_tests_from_prediction_rows(predictions_csv)
     cpu_timing = read_csv(csv_dir, "cpu_only_inference_timing_summary.csv")
     stress_detection = read_csv(csv_dir, "stress107_detection_summary.csv")
     stress_mono = read_csv(csv_dir, "stress107_severity_monotonicity.csv")
 
-    table6 = make_table6(metrics_summary, bootstrap_ci)
-    table7 = make_table7(best, bootstrap_ci)
-    table8 = make_table8(cpu_timing)
-    table9 = make_stress107_summary(stress_detection, stress_mono)
+    complete_input_performance = make_complete_input_performance(metrics_summary, bootstrap_ci)
+    missing_indicator_robustness = make_missing_indicator_robustness(best, bootstrap_ci)
+    cpu_only_timing = make_cpu_only_timing(cpu_timing)
+    stress107_summary = make_stress107_summary(stress_detection, stress_mono)
     correlations = make_feature_score_correlations()
 
-    table6.to_csv(output_dir / "table6_complete_input_performance.csv", index=False)
-    table7.to_csv(output_dir / "table7_missing_indicator_robustness.csv", index=False)
-    table8.to_csv(output_dir / "table8_cpu_only_timing.csv", index=False)
-    table9.to_csv(output_dir / "table9_stress107_summary.csv", index=False)
+    complete_input_performance.to_csv(output_dir / "complete_input_performance.csv", index=False)
+    missing_indicator_robustness.to_csv(output_dir / "missing_indicator_robustness.csv", index=False)
+    cpu_only_timing.to_csv(output_dir / "cpu_only_timing.csv", index=False)
+    stress107_summary.to_csv(output_dir / "stress107_summary.csv", index=False)
     bootstrap_ci.to_csv(output_dir / "bootstrap_ci.csv", index=False)
     paired_tests.to_csv(output_dir / "paired_error_tests.csv", index=False)
     metrics_by_seed.to_csv(output_dir / "metrics_by_seed.csv", index=False)
@@ -456,18 +649,28 @@ def main() -> None:
     stress_mono.to_csv(output_dir / "stress107_severity_monotonicity.csv", index=False)
     correlations.to_csv(output_dir / "feature_score_correlations.csv", index=False)
 
-    write_report(output_dir, table6, table7, table8, table9)
+    write_report(
+        output_dir,
+        complete_input_performance,
+        missing_indicator_robustness,
+        cpu_only_timing,
+        stress107_summary,
+        paired_tests,
+    )
 
     manifest: dict[str, Any] = {
         "bundle_dir": display_path(bundle_dir),
         "output_dir": display_path(output_dir),
-        "tables": [
-            "table6_complete_input_performance.csv",
-            "table7_missing_indicator_robustness.csv",
-            "table8_cpu_only_timing.csv",
-            "table9_stress107_summary.csv",
+        "outputs": [
+            "complete_input_performance.csv",
+            "missing_indicator_robustness.csv",
+            "cpu_only_timing.csv",
+            "stress107_summary.csv",
             "feature_score_correlations.csv",
+            "paired_error_tests.csv",
         ],
+        "paired_error_tests_source": display_path(predictions_csv),
+        "paired_error_tests_method": "Wilcoxon signed-rank tests over paired external hold-out row absolute-error differences with Holm correction; CI is a 95% t interval for the mean paired difference.",
         "large_artifacts_policy": "Large raw models/predictions remain under ignored results/missing_indicator_robustness and results/stress107 directories and are not committed.",
     }
 

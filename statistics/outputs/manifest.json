@@ -1,12 +1,15 @@
 {
   "bundle_dir": "results/package",
   "output_dir": "statistics/outputs",
-  "tables": [
-    "table6_complete_input_performance.csv",
-    "table7_missing_indicator_robustness.csv",
-    "table8_cpu_only_timing.csv",
-    "table9_stress107_summary.csv",
-    "feature_score_correlations.csv"
+  "outputs": [
+    "complete_input_performance.csv",
+    "missing_indicator_robustness.csv",
+    "cpu_only_timing.csv",
+    "stress107_summary.csv",
+    "feature_score_correlations.csv",
+    "paired_error_tests.csv"
   ],
+  "paired_error_tests_source": "results/missing_indicator_robustness/predictions/predictions_long.csv",
+  "paired_error_tests_method": "Wilcoxon signed-rank tests over paired external hold-out row absolute-error differences with Holm correction; CI is a 95% t interval for the mean paired difference.",
   "large_artifacts_policy": "Large raw models/predictions remain under ignored results/missing_indicator_robustness and results/stress107 directories and are not committed."
 }
