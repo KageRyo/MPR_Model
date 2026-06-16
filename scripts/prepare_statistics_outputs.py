@@ -195,11 +195,6 @@ def paired_tests_from_complete_input_gpu(
             float(row["A-B"]),
             significant,
         )
-        row["p_value_method"] = (
-            "Holm-adjusted paired t-test over complete-input GPU repeated-split MAE "
-            "values, paired by seed"
-        )
-
     columns = [
         "ModelA",
         "ModelB",
@@ -217,7 +212,6 @@ def paired_tests_from_complete_input_gpu(
         "raw_p_value",
         "p-value formatted",
         "model_comparison_result",
-        "p_value_method",
     ]
     return pd.DataFrame(rows)[columns].sort_values(["ModelA", "ModelB"]).reset_index(drop=True)
 
