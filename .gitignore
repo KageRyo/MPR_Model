@@ -179,6 +179,8 @@ statistics/outputs/*
 !statistics/outputs/bootstrap_ci.csv
 !statistics/outputs/paired_error_tests.csv
 !statistics/outputs/metrics_by_seed.csv
+!statistics/outputs/sample_size_sensitivity.csv
+!statistics/outputs/sample_size_metrics_by_fold.csv
 !statistics/outputs/stress107_*.csv
 !statistics/outputs/feature_score_correlations.csv
 !statistics/outputs/manifest.json
