@@ -13,15 +13,13 @@ import joblib
 import numpy as np
 import pandas as pd
 from loguru import logger
-from scipy.stats import t, wilcoxon
+from scipy.stats import t, ttest_rel
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-METRICS_FOR_OUTPUTS = ["r2", "mae", "rmse", "accuracy", "macro_f1"]
-COMPLETE_INPUT_METRICS = ["r2", "mae", "rmse", "macro_f1"]
 FEATURE_COLUMNS = ["DO", "BOD", "NH3N", "EC", "SS"]
 MODEL_ARTIFACT_PREFIX = {
     "lightgbm": "modelLGBM",
@@ -48,9 +46,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bundle-dir", default="results/package")
     parser.add_argument("--output-dir", default="statistics/outputs")
     parser.add_argument(
-        "--predictions-csv",
-        default="results/missing_indicator_robustness/predictions/predictions_long.csv",
-        help="Deprecated; paired tests now use seed-level MAE from the organized metrics bundle.",
+        "--complete-input-gpu-dir",
+        default="results/complete_input_gpu",
+        help="Complete-input GPU result directory containing repeated_split_results.csv.",
     )
     parser.add_argument("--update-production-model", action="store_true")
     parser.add_argument(
@@ -75,19 +73,6 @@ def display_path(path: Path) -> str:
         return str(path)
 
 
-def holm_adjust(p_values: list[float]) -> list[float]:
-    adjusted = [np.nan] * len(p_values)
-    valid = [(idx, value) for idx, value in enumerate(p_values) if pd.notna(value)]
-    ordered = sorted(valid, key=lambda item: item[1])
-    running = 0.0
-    m = len(ordered)
-    for rank, (idx, value) in enumerate(ordered, start=1):
-        corrected = min(1.0, (m - rank + 1) * value)
-        running = max(running, corrected)
-        adjusted[idx] = running
-    return adjusted
-
-
 def format_p_value(value: float | None) -> str:
     if value is None or pd.isna(value):
         return ""
@@ -96,13 +81,32 @@ def format_p_value(value: float | None) -> str:
     return format(float(value), ".17g")
 
 
-def mean_diff_ci(diff: np.ndarray, confidence: float = 0.95) -> tuple[float, float]:
+def format_ci(low: float, high: float) -> str:
+    if pd.isna(low) or pd.isna(high):
+        return ""
+    return f"[{format(float(low), '.17g')}, {format(float(high), '.17g')}]"
+
+
+def paired_mean_diff_ci(diff: np.ndarray, confidence: float = 0.95) -> tuple[float, float]:
     if len(diff) < 2:
         return (np.nan, np.nan)
     mean = float(np.mean(diff))
     sem = float(np.std(diff, ddof=1) / math.sqrt(len(diff)))
     critical = float(t.ppf((1.0 + confidence) / 2.0, df=len(diff) - 1))
     return (mean - critical * sem, mean + critical * sem)
+
+
+def holm_adjust(p_values: list[float]) -> list[float]:
+    adjusted = [np.nan] * len(p_values)
+    valid = [(idx, value) for idx, value in enumerate(p_values) if pd.notna(value)]
+    ordered = sorted(valid, key=lambda item: item[1])
+    running = 0.0
+    m = len(ordered)
+    for rank, (idx, value) in enumerate(ordered, start=1):
+        corrected = min(1.0, (m - rank + 1) * float(value))
+        running = max(running, corrected)
+        adjusted[idx] = running
+    return adjusted
 
 
 def paired_comparison_result(model_a: str, model_b: str, mean_diff: float, significant: bool) -> str:
@@ -112,103 +116,107 @@ def paired_comparison_result(model_a: str, model_b: str, mean_diff: float, signi
     return f"not significant; lower mean absolute error: {lower_model}"
 
 
-def paired_tests_from_metric_rows(metrics_by_seed: pd.DataFrame, source: str = "external_10714") -> pd.DataFrame:
-    metrics = metrics_by_seed[metrics_by_seed["source"] == source].copy()
-    metrics["mae"] = metrics["mae"].astype(float)
-    pending: list[dict[str, Any]] = []
-    group_columns = ["source", "missing_set", "experiment_mode", "experiment"]
-    for keys, group in metrics.groupby(group_columns, sort=True):
-        group_source, missing_set, mode, experiment = keys
-        wide = group.pivot_table(
-            index="seed",
-            columns="model_type",
-            values="mae",
-            aggfunc="first",
-        )
-        group_rows: list[dict[str, Any]] = []
-        group_p_values: list[float] = []
-        for model_a, model_b in itertools.combinations(sorted(wide.columns), 2):
-            paired = wide[[model_a, model_b]].dropna()
-            diff = (paired[model_a] - paired[model_b]).to_numpy(dtype=float)
-            if len(diff) == 0:
-                raw_p_value_for_holm = np.nan
-                mean_diff = np.nan
-                ci_low = np.nan
-                ci_high = np.nan
-                mean_a = np.nan
-                mean_b = np.nan
-            else:
-                mean_diff = float(np.mean(diff))
-                ci_low, ci_high = mean_diff_ci(diff)
-                mean_a = float(paired[model_a].mean())
-                mean_b = float(paired[model_b].mean())
-                try:
-                    _, raw_p_value_for_holm = wilcoxon(
-                        diff,
-                        zero_method="wilcox",
-                        alternative="two-sided",
-                        method="exact",
-                    )
-                except ValueError:
-                    raw_p_value_for_holm = np.nan
-            group_rows.append(
-                {
-                    "source": group_source,
-                    "missing_set": missing_set,
-                    "experiment_mode": mode,
-                    "experiment": experiment,
-                    "metric": "mae",
-                    "model_a": model_a,
-                    "model_b": model_b,
-                    "n_pairs": int(len(diff)),
-                    "mean_absolute_error_a": mean_a,
-                    "mean_absolute_error_b": mean_b,
-                    "mean_difference_a_minus_b": mean_diff,
-                    "mean_difference_ci95_low": ci_low,
-                    "mean_difference_ci95_high": ci_high,
-                    "lower_mean_error_model": model_a if len(diff) and mean_diff < 0 else model_b,
-                }
-            )
-            group_p_values.append(raw_p_value_for_holm)
-
-        adjusted = holm_adjust(group_p_values)
-        for row, p_adj in zip(group_rows, adjusted):
-            significant = bool(p_adj < 0.05) if pd.notna(p_adj) else False
-            row["p_value"] = p_adj
-            row["p_value_formatted"] = format_p_value(p_adj)
-            row["p_value_method"] = "Holm-adjusted exact two-sided Wilcoxon signed-rank test over seed-level MAE"
-            row["model_comparison_result"] = paired_comparison_result(
-                str(row["model_a"]),
-                str(row["model_b"]),
-                float(row["mean_difference_a_minus_b"]),
-                significant,
-            )
-            row["significant_at_0_05"] = significant
-        pending.extend(group_rows)
-
-    output = pd.DataFrame(pending)
+def complete_input_gpu_performance(metrics_summary: pd.DataFrame, n_runs: int) -> pd.DataFrame:
+    output = metrics_summary.copy()
+    if "direct_wqi5" in set(output["model_type"]):
+        output = output[output["model_type"] != "direct_wqi5"].copy()
+    output["n_runs"] = n_runs
     columns = [
-        "source",
-        "missing_set",
-        "experiment_mode",
-        "experiment",
-        "metric",
-        "model_a",
-        "model_b",
-        "n_pairs",
-        "mean_absolute_error_a",
-        "mean_absolute_error_b",
-        "mean_difference_a_minus_b",
-        "mean_difference_ci95_low",
-        "mean_difference_ci95_high",
-        "p_value",
-        "p_value_formatted",
-        "p_value_method",
-        "lower_mean_error_model",
-        "model_comparison_result",
-        "significant_at_0_05",
+        "model_type",
+        "n_runs",
+        "r2_mean",
+        "r2_std",
+        "mae_mean",
+        "mae_std",
+        "rmse_mean",
+        "rmse_std",
+        "nmae_mean",
+        "nmae_std",
+        "latency_s_mean",
     ]
-    return output[columns].sort_values(["missing_set", "experiment_mode", "experiment", "model_a", "model_b"])
+    return output[columns].sort_values(["mae_mean", "rmse_mean", "model_type"])
+
+
+def paired_tests_from_complete_input_gpu(
+    repeated_results: pd.DataFrame,
+    *,
+    metric: str = "mae",
+) -> pd.DataFrame:
+    frame = repeated_results.copy()
+    frame = frame[frame["model_type"] != "direct_wqi5"].copy()
+    frame[metric] = frame[metric].astype(float)
+    wide = frame.pivot_table(index="seed", columns="model_type", values=metric, aggfunc="first")
+
+    rows: list[dict[str, Any]] = []
+    raw_p_values: list[float] = []
+    for model_a, model_b in itertools.combinations(sorted(wide.columns), 2):
+        paired = wide[[model_a, model_b]].dropna()
+        diff = (paired[model_a] - paired[model_b]).to_numpy(dtype=float)
+        if len(diff) < 2:
+            mean_diff = ci_low = ci_high = raw_p_value = np.nan
+            mean_a = mean_b = np.nan
+        else:
+            mean_diff = float(np.mean(diff))
+            ci_low, ci_high = paired_mean_diff_ci(diff)
+            mean_a = float(paired[model_a].mean())
+            mean_b = float(paired[model_b].mean())
+            raw_p_value = float(ttest_rel(paired[model_a], paired[model_b]).pvalue)
+        lower_model = model_a if pd.notna(mean_diff) and mean_diff < 0 else model_b
+        rows.append(
+            {
+                "ModelA": model_a,
+                "ModelB": model_b,
+                "metric": metric,
+                "n_pairs": int(len(paired)),
+                "mean_mae_ModelA": mean_a,
+                "mean_mae_ModelB": mean_b,
+                "A-B": mean_diff,
+                "A-B 95% CI": format_ci(ci_low, ci_high),
+                "A-B 95% CI low": ci_low,
+                "A-B 95% CI high": ci_high,
+                "raw_p_value": raw_p_value,
+                "better_model": lower_model,
+            }
+        )
+        raw_p_values.append(raw_p_value)
+
+    adjusted = holm_adjust(raw_p_values)
+    for row, p_value in zip(rows, adjusted):
+        significant = bool(p_value < 0.05) if pd.notna(p_value) else False
+        row["p-value"] = p_value
+        row["p-value formatted"] = format_p_value(p_value)
+        row["significant_at_0_05"] = significant
+        row["model_comparison_result"] = paired_comparison_result(
+            str(row["ModelA"]),
+            str(row["ModelB"]),
+            float(row["A-B"]),
+            significant,
+        )
+        row["p_value_method"] = (
+            "Holm-adjusted paired t-test over complete-input GPU repeated-split MAE "
+            "values, paired by seed"
+        )
+
+    columns = [
+        "ModelA",
+        "ModelB",
+        "A-B",
+        "A-B 95% CI",
+        "p-value",
+        "significant_at_0_05",
+        "better_model",
+        "n_pairs",
+        "metric",
+        "mean_mae_ModelA",
+        "mean_mae_ModelB",
+        "A-B 95% CI low",
+        "A-B 95% CI high",
+        "raw_p_value",
+        "p-value formatted",
+        "model_comparison_result",
+        "p_value_method",
+    ]
+    return pd.DataFrame(rows)[columns].sort_values(["ModelA", "ModelB"]).reset_index(drop=True)
 
 
 def ci_lookup(ci: pd.DataFrame) -> dict[tuple[str, str, str, str, str, str], tuple[float, float]]:
@@ -247,36 +255,6 @@ def add_ci_columns(frame: pd.DataFrame, ci: pd.DataFrame, metrics: list[str]) ->
         out[f"{metric}_ci95_low"] = lows
         out[f"{metric}_ci95_high"] = highs
     return out
-
-
-def make_complete_input_performance(metrics_summary: pd.DataFrame, ci: pd.DataFrame) -> pd.DataFrame:
-    output = metrics_summary[
-        (metrics_summary["source"] == "external_10714")
-        & (metrics_summary["missing_set"] == "complete")
-        & (metrics_summary["experiment_mode"] == "full_reference")
-    ].copy()
-    output = add_ci_columns(output, ci, COMPLETE_INPUT_METRICS)
-    columns = [
-        "model_type",
-        "n_runs",
-        "n_per_run",
-        "r2_mean",
-        "r2_ci95_low",
-        "r2_ci95_high",
-        "mae_mean",
-        "mae_ci95_low",
-        "mae_ci95_high",
-        "rmse_mean",
-        "rmse_ci95_low",
-        "rmse_ci95_high",
-        "macro_f1_mean",
-        "macro_f1_ci95_low",
-        "macro_f1_ci95_high",
-        "accuracy_mean",
-        "latency_s_mean",
-        "training_s_mean",
-    ]
-    return output[columns].sort_values(["mae_mean", "rmse_mean", "model_type"])
 
 
 def interpretation_for(row: pd.Series) -> str:
@@ -436,29 +414,22 @@ def make_feature_score_correlations() -> pd.DataFrame:
 
 
 def paired_summary_markdown(paired_tests: pd.DataFrame) -> list[str]:
-    subset = paired_tests[
-        (paired_tests["source"] == "external_10714")
-        & (paired_tests["missing_set"] == "complete")
-        & (paired_tests["experiment_mode"] == "full_reference")
-        & (paired_tests["experiment"] == "full_reference")
-    ].copy()
-    if subset.empty:
+    if paired_tests.empty:
         return []
     lines = [
         "## Pairwise Error Tests",
         "",
-        "Complete-input full-reference comparisons use seed-level external hold-out MAE from the five repeated model runs. Negative A-B values favor model A; positive values favor model B. Holm correction is applied within this 15-comparison model family.",
+        "Complete-input GPU comparisons use repeated-split MAE values paired by seed. `A-B` is `ModelA MAE - ModelB MAE`, so negative values favor ModelA. The p-value column is Holm-adjusted across the 15 model-pair comparisons.",
         "",
-        "| Comparison | Mean MAE difference (A - B) | Holm-adjusted p-value | Result | Significant |",
-        "| --- | --- | --- | --- | --- |",
+        "| ModelA | ModelB | A-B | A-B 95% CI | p-value | Significant |",
+        "| --- | --- | ---: | --- | ---: | --- |",
     ]
-    for _, row in subset.iterrows():
-        comparison = f"{row['model_a']} vs {row['model_b']}"
-        mean_diff = format(float(row["mean_difference_a_minus_b"]), ".17g")
+    for _, row in paired_tests.iterrows():
+        mean_diff = format(float(row["A-B"]), ".17g")
         significant = "yes" if bool(row["significant_at_0_05"]) else "no"
         lines.append(
-            f"| {comparison} | {mean_diff} | {row['p_value_formatted']} | "
-            f"{row['model_comparison_result']} | {significant} |"
+            f"| {row['ModelA']} | {row['ModelB']} | {mean_diff} | {row['A-B 95% CI']} | "
+            f"{row['p-value formatted']} | {significant} |"
         )
     lines.append("")
     return lines
@@ -486,14 +457,14 @@ def write_report(
         "",
         "## Scope",
         "",
-        "This report summarizes the missing-indicator robustness, Stress107, and CPU-only timing outputs.",
+        "This report summarizes complete-input GPU performance, missing-indicator robustness, Stress107, and CPU-only timing outputs.",
         "It replaces the earlier percentage-agreement tables with R2, MAE, RMSE, Macro-F1, bootstrap confidence intervals, and paired model tests.",
         "",
         "The task remains WQI5 surrogate regression, not future water-quality forecasting. Direct WQI5 computation remains the reference method when all five indicators are available.",
         "",
         "## Main Findings",
         "",
-        f"- Complete-input external hold-out best model: `{best_full['model_type']}` with R2={best_full['r2_mean']:.4f}, MAE={best_full['mae_mean']:.4f}, RMSE={best_full['rmse_mean']:.4f}.",
+        f"- Complete-input GPU repeated-split best model: `{best_full['model_type']}` with R2={best_full['r2_mean']:.4f}, MAE={best_full['mae_mean']:.4f}, RMSE={best_full['rmse_mean']:.4f}.",
     ]
     if not missing_nh3n.empty:
         row = missing_nh3n.iloc[0]
@@ -509,7 +480,7 @@ def write_report(
         [
             "- Stress107 uses 107 sequential event windows, not 107-fold cross-validation.",
             "- CPU-only timing is the deployment-oriented inference-time reference; GPU/multicore acceleration is acceptable for experiment reproduction.",
-            "- Pairwise model comparisons use seed-level external hold-out MAE with Holm-adjusted exact two-sided Wilcoxon signed-rank p-values within each experiment family.",
+            "- Pairwise model comparisons use complete-input GPU repeated-split MAE with Holm-adjusted paired t-test p-values across the 15 model pairs.",
             "",
             "## Output Files",
             "",
@@ -534,7 +505,7 @@ def write_report(
         [
             "## Reporting Boundary",
             "",
-            "The p-values test paired seed-level MAE differences across five repeated model runs. With `n=5` and a two-sided exact Wilcoxon test, the smallest possible raw p-value is `0.0625`, so the current repeated-run design does not support claiming pairwise statistical significance at alpha 0.05.",
+            "The p-values test paired MAE differences from `results/complete_input_gpu/repeated_split_results.csv`, matched by `seed`. The complete-input GPU archive contains split-level metrics rather than per-row predictions, so the paired tests use five seed-level paired values per model comparison.",
             "",
             "Stress107 reduces dependence on a single selected middle window, but it does not prove absence of all sampling bias and is not a real pollution-event validation.",
         ]
@@ -618,24 +589,26 @@ def main() -> None:
     args = parse_args()
     bundle_dir = (PROJECT_ROOT / args.bundle_dir).resolve()
     csv_dir = bundle_dir / "organized" / "csv"
+    complete_input_gpu_dir = (PROJECT_ROOT / args.complete_input_gpu_dir).resolve()
     output_dir = (PROJECT_ROOT / args.output_dir).resolve()
-    predictions_csv = (PROJECT_ROOT / args.predictions_csv).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
     best = read_csv(csv_dir, "missing_indicator_best_by_experiment_source.csv")
-    metrics_summary = read_csv(csv_dir, "missing_indicator_metrics_summary.csv")
     metrics_by_seed = read_csv(csv_dir, "missing_indicator_metrics_by_seed.csv")
     bootstrap_ci = read_csv(csv_dir, "missing_indicator_bootstrap_ci.csv")
     cpu_timing = read_csv(csv_dir, "cpu_only_inference_timing_summary.csv")
     stress_detection = read_csv(csv_dir, "stress107_detection_summary.csv")
     stress_mono = read_csv(csv_dir, "stress107_severity_monotonicity.csv")
+    complete_input_summary = pd.read_csv(complete_input_gpu_dir / "metrics_summary.csv")
+    complete_input_repeated = pd.read_csv(complete_input_gpu_dir / "repeated_split_results.csv")
+    n_complete_input_runs = int(complete_input_repeated["seed"].nunique())
 
-    complete_input_performance = make_complete_input_performance(metrics_summary, bootstrap_ci)
+    complete_input_performance = complete_input_gpu_performance(complete_input_summary, n_complete_input_runs)
     missing_indicator_robustness = make_missing_indicator_robustness(best, bootstrap_ci)
     cpu_only_timing = make_cpu_only_timing(cpu_timing)
     stress107_summary = make_stress107_summary(stress_detection, stress_mono)
     correlations = make_feature_score_correlations()
-    paired_tests = paired_tests_from_metric_rows(metrics_by_seed)
+    paired_tests = paired_tests_from_complete_input_gpu(complete_input_repeated)
 
     complete_input_performance.to_csv(output_dir / "complete_input_performance.csv", index=False)
     missing_indicator_robustness.to_csv(output_dir / "missing_indicator_robustness.csv", index=False)
@@ -659,6 +632,7 @@ def main() -> None:
 
     manifest: dict[str, Any] = {
         "bundle_dir": display_path(bundle_dir),
+        "complete_input_gpu_dir": display_path(complete_input_gpu_dir),
         "output_dir": display_path(output_dir),
         "outputs": [
             "complete_input_performance.csv",
@@ -672,8 +646,8 @@ def main() -> None:
         ],
         "sample_size_metrics_source": "results/sample_size_experiments/metrics",
         "sample_size_outputs_scope": "requested 1,000, 10,000, and 50,000 row settings; local 5,000 row results are excluded from the publication-facing sample-size CSVs.",
-        "paired_error_tests_source": display_path(csv_dir / "missing_indicator_metrics_by_seed.csv"),
-        "paired_error_tests_method": "Reported p_value is the Holm-adjusted exact two-sided Wilcoxon signed-rank p-value over paired seed-level external hold-out MAE values. Holm correction is applied within each source/missing_set/experiment_mode/experiment model-comparison family.",
+        "paired_error_tests_source": display_path(complete_input_gpu_dir / "repeated_split_results.csv"),
+        "paired_error_tests_method": "Reported p-value is the Holm-adjusted paired t-test p-value over complete-input GPU repeated-split MAE values. Rows are paired by seed, and Holm correction is applied across the 15 trainable-model comparisons.",
         "large_artifacts_policy": "Large raw models/predictions remain under ignored results/missing_indicator_robustness and results/stress107 directories and are not committed.",
     }
 
