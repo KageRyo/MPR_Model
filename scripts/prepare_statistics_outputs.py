@@ -50,7 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--predictions-csv",
         default="results/missing_indicator_robustness/predictions/predictions_long.csv",
-        help="Prediction rows used for hold-out paired absolute-error tests.",
+        help="Deprecated; paired tests now use seed-level MAE from the organized metrics bundle.",
     )
     parser.add_argument("--update-production-model", action="store_true")
     parser.add_argument(
@@ -112,37 +112,26 @@ def paired_comparison_result(model_a: str, model_b: str, mean_diff: float, signi
     return f"not significant; lower mean absolute error: {lower_model}"
 
 
-def paired_tests_from_prediction_rows(predictions_csv: Path, source: str = "external_10714") -> pd.DataFrame:
-    usecols = [
-        "source",
-        "missing_set",
-        "experiment_mode",
-        "experiment",
-        "seed",
-        "model_type",
-        "row_id",
-        "abs_error",
-    ]
-    predictions = pd.read_csv(predictions_csv, usecols=usecols)
-    predictions = predictions[predictions["source"] == source].copy()
-    predictions["abs_error"] = predictions["abs_error"].astype(float)
-
+def paired_tests_from_metric_rows(metrics_by_seed: pd.DataFrame, source: str = "external_10714") -> pd.DataFrame:
+    metrics = metrics_by_seed[metrics_by_seed["source"] == source].copy()
+    metrics["mae"] = metrics["mae"].astype(float)
     pending: list[dict[str, Any]] = []
-    p_values: list[float] = []
     group_columns = ["source", "missing_set", "experiment_mode", "experiment"]
-    for keys, group in predictions.groupby(group_columns, sort=True):
+    for keys, group in metrics.groupby(group_columns, sort=True):
         group_source, missing_set, mode, experiment = keys
         wide = group.pivot_table(
-            index=["seed", "row_id"],
+            index="seed",
             columns="model_type",
-            values="abs_error",
+            values="mae",
             aggfunc="first",
         )
+        group_rows: list[dict[str, Any]] = []
+        group_p_values: list[float] = []
         for model_a, model_b in itertools.combinations(sorted(wide.columns), 2):
             paired = wide[[model_a, model_b]].dropna()
             diff = (paired[model_a] - paired[model_b]).to_numpy(dtype=float)
             if len(diff) == 0:
-                p_value = np.nan
+                raw_p_value_for_holm = np.nan
                 mean_diff = np.nan
                 ci_low = np.nan
                 ci_high = np.nan
@@ -154,16 +143,21 @@ def paired_tests_from_prediction_rows(predictions_csv: Path, source: str = "exte
                 mean_a = float(paired[model_a].mean())
                 mean_b = float(paired[model_b].mean())
                 try:
-                    _, p_value = wilcoxon(diff, zero_method="wilcox", alternative="two-sided", method="asymptotic")
+                    _, raw_p_value_for_holm = wilcoxon(
+                        diff,
+                        zero_method="wilcox",
+                        alternative="two-sided",
+                        method="exact",
+                    )
                 except ValueError:
-                    p_value = np.nan
-            pending.append(
+                    raw_p_value_for_holm = np.nan
+            group_rows.append(
                 {
                     "source": group_source,
                     "missing_set": missing_set,
                     "experiment_mode": mode,
                     "experiment": experiment,
-                    "metric": "absolute_error",
+                    "metric": "mae",
                     "model_a": model_a,
                     "model_b": model_b,
                     "n_pairs": int(len(diff)),
@@ -172,25 +166,25 @@ def paired_tests_from_prediction_rows(predictions_csv: Path, source: str = "exte
                     "mean_difference_a_minus_b": mean_diff,
                     "mean_difference_ci95_low": ci_low,
                     "mean_difference_ci95_high": ci_high,
-                    "wilcoxon_p_value": p_value,
                     "lower_mean_error_model": model_a if len(diff) and mean_diff < 0 else model_b,
                 }
             )
-            p_values.append(p_value)
+            group_p_values.append(raw_p_value_for_holm)
 
-    adjusted = holm_adjust(p_values)
-    for row, p_adj in zip(pending, adjusted):
-        significant = bool(p_adj < 0.05) if pd.notna(p_adj) else False
-        row["holm_adjusted_p_value"] = p_adj
-        row["wilcoxon_p_value_formatted"] = format_p_value(row["wilcoxon_p_value"])
-        row["holm_adjusted_p_value_formatted"] = format_p_value(p_adj)
-        row["model_comparison_result"] = paired_comparison_result(
-            str(row["model_a"]),
-            str(row["model_b"]),
-            float(row["mean_difference_a_minus_b"]),
-            significant,
-        )
-        row["significant_at_0_05"] = significant
+        adjusted = holm_adjust(group_p_values)
+        for row, p_adj in zip(group_rows, adjusted):
+            significant = bool(p_adj < 0.05) if pd.notna(p_adj) else False
+            row["p_value"] = p_adj
+            row["p_value_formatted"] = format_p_value(p_adj)
+            row["p_value_method"] = "Holm-adjusted exact two-sided Wilcoxon signed-rank test over seed-level MAE"
+            row["model_comparison_result"] = paired_comparison_result(
+                str(row["model_a"]),
+                str(row["model_b"]),
+                float(row["mean_difference_a_minus_b"]),
+                significant,
+            )
+            row["significant_at_0_05"] = significant
+        pending.extend(group_rows)
 
     output = pd.DataFrame(pending)
     columns = [
@@ -207,10 +201,9 @@ def paired_tests_from_prediction_rows(predictions_csv: Path, source: str = "exte
         "mean_difference_a_minus_b",
         "mean_difference_ci95_low",
         "mean_difference_ci95_high",
-        "wilcoxon_p_value",
-        "wilcoxon_p_value_formatted",
-        "holm_adjusted_p_value",
-        "holm_adjusted_p_value_formatted",
+        "p_value",
+        "p_value_formatted",
+        "p_value_method",
         "lower_mean_error_model",
         "model_comparison_result",
         "significant_at_0_05",
@@ -454,21 +447,17 @@ def paired_summary_markdown(paired_tests: pd.DataFrame) -> list[str]:
     lines = [
         "## Pairwise Error Tests",
         "",
-        "Complete-input full-reference comparisons use external hold-out row absolute-error differences. Negative A-B values favor model A; positive values favor model B.",
+        "Complete-input full-reference comparisons use seed-level external hold-out MAE from the five repeated model runs. Negative A-B values favor model A; positive values favor model B. Holm correction is applied within this 15-comparison model family.",
         "",
-        "| Comparison | Mean absolute-error difference (A - B) | 95% CI | Holm p | Result | Significant |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| Comparison | Mean MAE difference (A - B) | Holm-adjusted p-value | Result | Significant |",
+        "| --- | --- | --- | --- | --- |",
     ]
     for _, row in subset.iterrows():
         comparison = f"{row['model_a']} vs {row['model_b']}"
-        mean_diff = format(float(row["mean_difference_a_minus_b"]), ".6g")
-        ci = (
-            f"[{format(float(row['mean_difference_ci95_low']), '.6g')}, "
-            f"{format(float(row['mean_difference_ci95_high']), '.6g')}]"
-        )
+        mean_diff = format(float(row["mean_difference_a_minus_b"]), ".17g")
         significant = "yes" if bool(row["significant_at_0_05"]) else "no"
         lines.append(
-            f"| {comparison} | {mean_diff} | {ci} | {row['holm_adjusted_p_value_formatted']} | "
+            f"| {comparison} | {mean_diff} | {row['p_value_formatted']} | "
             f"{row['model_comparison_result']} | {significant} |"
         )
     lines.append("")
@@ -520,7 +509,7 @@ def write_report(
         [
             "- Stress107 uses 107 sequential event windows, not 107-fold cross-validation.",
             "- CPU-only timing is the deployment-oriented inference-time reference; GPU/multicore acceleration is acceptable for experiment reproduction.",
-            "- Pairwise model comparisons use external hold-out row absolute-error differences with Wilcoxon signed-rank tests and Holm correction.",
+            "- Pairwise model comparisons use seed-level external hold-out MAE with Holm-adjusted exact two-sided Wilcoxon signed-rank p-values within each experiment family.",
             "",
             "## Output Files",
             "",
@@ -545,10 +534,14 @@ def write_report(
         [
             "## Reporting Boundary",
             "",
+            "The p-values test paired seed-level MAE differences across five repeated model runs. With `n=5` and a two-sided exact Wilcoxon test, the smallest possible raw p-value is `0.0625`, so the current repeated-run design does not support claiming pairwise statistical significance at alpha 0.05.",
+            "",
             "Stress107 reduces dependence on a single selected middle window, but it does not prove absence of all sampling bias and is not a real pollution-event validation.",
         ]
     )
-    (output_dir / "statistical_summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    report_text = "\n".join(lines) + "\n"
+    (output_dir / "statistical_summary.md").write_text(report_text, encoding="utf-8")
+    (output_dir / "statistical_analysis_report.md").write_text(report_text, encoding="utf-8")
 
 
 def write_production_models(output_dir: Path) -> dict[str, Any]:
@@ -633,7 +626,6 @@ def main() -> None:
     metrics_summary = read_csv(csv_dir, "missing_indicator_metrics_summary.csv")
     metrics_by_seed = read_csv(csv_dir, "missing_indicator_metrics_by_seed.csv")
     bootstrap_ci = read_csv(csv_dir, "missing_indicator_bootstrap_ci.csv")
-    paired_tests = paired_tests_from_prediction_rows(predictions_csv)
     cpu_timing = read_csv(csv_dir, "cpu_only_inference_timing_summary.csv")
     stress_detection = read_csv(csv_dir, "stress107_detection_summary.csv")
     stress_mono = read_csv(csv_dir, "stress107_severity_monotonicity.csv")
@@ -643,6 +635,7 @@ def main() -> None:
     cpu_only_timing = make_cpu_only_timing(cpu_timing)
     stress107_summary = make_stress107_summary(stress_detection, stress_mono)
     correlations = make_feature_score_correlations()
+    paired_tests = paired_tests_from_metric_rows(metrics_by_seed)
 
     complete_input_performance.to_csv(output_dir / "complete_input_performance.csv", index=False)
     missing_indicator_robustness.to_csv(output_dir / "missing_indicator_robustness.csv", index=False)
@@ -679,8 +672,8 @@ def main() -> None:
         ],
         "sample_size_metrics_source": "results/sample_size_experiments/metrics",
         "sample_size_outputs_scope": "requested 1,000, 10,000, and 50,000 row settings; local 5,000 row results are excluded from the publication-facing sample-size CSVs.",
-        "paired_error_tests_source": display_path(predictions_csv),
-        "paired_error_tests_method": "Wilcoxon signed-rank tests over paired external hold-out row absolute-error differences with Holm correction; CI is a 95% t interval for the mean paired difference.",
+        "paired_error_tests_source": display_path(csv_dir / "missing_indicator_metrics_by_seed.csv"),
+        "paired_error_tests_method": "Reported p_value is the Holm-adjusted exact two-sided Wilcoxon signed-rank p-value over paired seed-level external hold-out MAE values. Holm correction is applied within each source/missing_set/experiment_mode/experiment model-comparison family.",
         "large_artifacts_policy": "Large raw models/predictions remain under ignored results/missing_indicator_robustness and results/stress107 directories and are not committed.",
     }
 
