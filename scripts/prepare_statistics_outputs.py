@@ -76,9 +76,12 @@ def display_path(path: Path) -> str:
 def format_p_value(value: float | None) -> str:
     if value is None or pd.isna(value):
         return ""
-    if value == 0.0:
+    value = float(value)
+    if value == 0.0 or value < 1e-300:
         return "<1e-300"
-    return format(float(value), ".17g")
+    if value < 0.001:
+        return f"{value:.3e}"
+    return f"{value:.6g}"
 
 
 def format_ci(low: float, high: float) -> str:
@@ -506,6 +509,7 @@ def write_report(
             "## Reporting Boundary",
             "",
             "The p-values test paired MAE differences from `results/complete_input_gpu/repeated_split_results.csv`, matched by `seed`. The complete-input GPU archive contains split-level metrics rather than per-row predictions, so the paired tests use five seed-level paired values per model comparison.",
+            "All 15 model pairs are significant under this paired t-test because every pair has same-direction MAE differences across the five seeds. This is not the same data granularity as the earlier 10,714-row paired absolute-error Wilcoxon table.",
             "",
             "Stress107 reduces dependence on a single selected middle window, but it does not prove absence of all sampling bias and is not a real pollution-event validation.",
         ]
