@@ -22,7 +22,7 @@ T_CRITICAL_95_DF4 = 2.7764451051977987
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Prepare publication-facing sample-size sensitivity outputs."
+        description="Prepare sample-size sensitivity outputs."
     )
     parser.add_argument(
         "--metrics-dir",

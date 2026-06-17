@@ -83,8 +83,8 @@ class Stress107ManifestSchema(BaseModel):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--artifact-dir", required=True, help="Result directory containing saved robustness model artifacts.")
-    parser.add_argument("--output-dir", required=True, help="New output directory for Stress107 CSV and report files.")
+    parser.add_argument("--artifact-dir", required=True, help="Result directory containing saved missing-indicator model artifacts.")
+    parser.add_argument("--output-dir", required=True, help="New output directory for 107-window stress-test CSV and report files.")
     parser.add_argument("--config", default=None)
     parser.add_argument("--models", nargs="*", default=None)
     parser.add_argument("--seeds", nargs="*", type=int, default=None)
@@ -306,7 +306,7 @@ def setting_rows(config: Stress107ConfigSchema, windows: list[tuple[int, int]]) 
         {"item": "window_size_min", "value": min(end - start for start, end in windows)},
         {"item": "window_size_max", "value": max(end - start for start, end in windows)},
         {"item": "window_size_mean", "value": float(np.mean([end - start for start, end in windows]))},
-        {"item": "interpretation", "value": "Controlled synthetic 107 sequential event-window stress test; not real event validation."},
+        {"item": "interpretation", "value": "Controlled synthetic 107-window sequential event-window stress test; not real event validation."},
         {"item": "detection_rule_mean_decrease", "value": "window mean stress prediction is lower than baseline prediction"},
         {"item": "detection_rule_drop_ge_1", "value": "window mean baseline-minus-stress score drop is at least 1 point"},
     ]
@@ -332,7 +332,7 @@ def key_conclusions(
         },
         {
             "item": "wording",
-            "value": "Use '107 sequential event-window stress test', not '107-fold cross-validation'.",
+            "value": "Use '107-window sequential event-window stress test', not '107-fold cross-validation'.",
         },
         {
             "item": "claim_boundary",
@@ -384,7 +384,7 @@ def main() -> None:
     if not stress_config.enabled:
         raise ValueError("stress107_event_windows.enabled is false.")
     if stress_config.window_mode != "sequential_equal_blocks":
-        raise ValueError("Only sequential_equal_blocks is supported for Stress107.")
+        raise ValueError("Only sequential_equal_blocks is supported for the 107-window stress test.")
 
     subset = pd.read_csv(PROJECT_ROOT / config["dataset_50000"])
     full = pd.read_csv(PROJECT_ROOT / config["full_dataset"])
@@ -405,7 +405,7 @@ def main() -> None:
         )
 
     logger.info(
-        "Stress107 artifact_dir={} output_dir={} rows={} windows={} scenarios={} severities={} seeds={} models={}",
+        "107-window stress test artifact_dir={} output_dir={} rows={} windows={} scenarios={} severities={} seeds={} models={}",
         artifact_dir,
         output_dir,
         len(external),
@@ -492,10 +492,10 @@ def main() -> None:
             missing_sets=missing_sets,
             experiment_modes=[FULL_REFERENCE, INFERENCE_DROPOUT, REDUCED_RETRAINING, INDICATOR_RECONSTRUCTION],
             source=stress_config.source,
-            note="Controlled synthetic Stress107 sequential event-window stress test; not real event validation.",
+            note="Controlled synthetic 107-window sequential event-window stress test; not real event validation.",
         ),
     )
-    logger.success("Stress107 outputs written to: {}", output_dir)
+    logger.success("107-window stress-test outputs written to: {}", output_dir)
 
 
 if __name__ == "__main__":

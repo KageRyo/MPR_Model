@@ -41,7 +41,7 @@ MODEL_DIR = {
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Prepare publication statistics outputs from the missing-indicator result bundle."
+        description="Prepare statistics outputs from the missing-indicator result bundle."
     )
     parser.add_argument("--bundle-dir", default="results/package")
     parser.add_argument("--output-dir", default="statistics/outputs")
@@ -50,7 +50,11 @@ def parse_args() -> argparse.Namespace:
         default="results/complete_input_gpu",
         help="Complete-input GPU result directory containing repeated_split_results.csv.",
     )
-    parser.add_argument("--update-production-model", action="store_true")
+    parser.add_argument(
+        "--update-production-model",
+        action="store_true",
+        help="Update local inference artifacts and the compatibility manifest.",
+    )
     parser.add_argument(
         "--archive-legacy-50000-artifacts",
         dest="archive_legacy_50000_artifacts",
@@ -261,18 +265,18 @@ def interpretation_for(row: pd.Series) -> str:
     if missing_set == "complete":
         return "complete five-indicator reference surrogate; direct WQI5 remains the reference method"
     if missing_set == "missing_nh3n" and mode == "reduced_retraining":
-        return "useful auxiliary estimate when NH3N is unavailable; not a formula replacement"
+        return "useful auxiliary estimate when NH3N is unavailable; direct WQI5 remains the complete-input reference"
     if missing_set == "missing_nh3n" and mode == "indicator_reconstruction":
         return "two-stage reconstruction remains feasible for NH3N but adds pipeline complexity"
     if missing_set == "missing_bod" and mode == "inference_dropout":
-        return "full model shows partial robustness to inference-time BOD loss"
+        return "full model retains partial signal when BOD is unavailable at inference time"
     if missing_set == "missing_bod" and r2 < 0.2:
         return "external generalization is weak; BOD is a critical indicator"
     if missing_set == "missing_bod_nh3n" and mode == "inference_dropout":
-        return "partial stress setting; insufficient as a complete-input replacement"
+        return "limited incomplete-input setting; insufficient as a complete-input substitute"
     if missing_set == "missing_bod_nh3n" and r2 < 0.0:
         return "not reliable on external hold-out; only a coarse screening boundary case"
-    return "deployment-constrained auxiliary result; interpret conservatively"
+    return "incomplete-input auxiliary result; interpret conservatively"
 
 
 def make_missing_indicator_robustness(best: pd.DataFrame, ci: pd.DataFrame) -> pd.DataFrame:
@@ -454,7 +458,7 @@ def write_report(
         "",
         "## Scope",
         "",
-        "This report summarizes complete-input GPU performance, missing-indicator robustness, Stress107, and CPU-only timing outputs.",
+        "This report summarizes complete-input GPU performance, missing-indicator results, 107-window stress-test results, and CPU-only timing outputs.",
         "It replaces the earlier percentage-agreement tables with R2, MAE, RMSE, Macro-F1, bootstrap confidence intervals, and paired model tests.",
         "",
         "The task remains WQI5 surrogate regression, not future water-quality forecasting. Direct WQI5 computation remains the reference method when all five indicators are available.",
@@ -475,8 +479,8 @@ def write_report(
         )
     lines.extend(
         [
-            "- Stress107 uses 107 sequential event windows, not 107-fold cross-validation.",
-            "- CPU-only timing is the deployment-oriented inference-time reference; GPU/multicore acceleration is acceptable for experiment reproduction.",
+            "- The 107-window stress test uses sequential event windows, not 107-fold cross-validation.",
+            "- CPU-only timing is a rough inference-time reference; GPU/multicore acceleration is used only for experiment reproduction.",
             "- Pairwise model comparisons use complete-input GPU repeated-split MAE with Holm-adjusted paired t-test p-values across the 15 model pairs.",
             "",
             "## Output Files",
@@ -505,7 +509,7 @@ def write_report(
             "The p-values test paired MAE differences from `results/complete_input_gpu/repeated_split_results.csv`, matched by `seed`. The complete-input GPU archive contains split-level metrics rather than per-row predictions, so the paired tests use five seed-level paired values per model comparison.",
             "All 15 model pairs are significant under this paired t-test because every pair has same-direction MAE differences across the five seeds. This is not the same data granularity as the earlier 10,714-row paired absolute-error Wilcoxon table.",
             "",
-            "Stress107 reduces dependence on a single selected middle window, but it does not prove absence of all sampling bias and is not a real pollution-event validation.",
+            "The 107-window stress test reduces dependence on a single selected middle window, but it does not prove absence of all sampling bias and is not a real pollution-event validation.",
         ]
     )
     report_text = "\n".join(lines) + "\n"
@@ -559,7 +563,7 @@ def write_production_models(output_dir: Path) -> dict[str, Any]:
         "selection": "lowest external_10714 MAE per model among complete-input full_reference seed artifacts",
         "artifacts": artifacts,
         "api_contract": "complete-input WQI5 surrogate; required features are DO, BOD, NH3N, EC, SS",
-        "not_for": "missing-indicator replacement or future water-quality forecasting",
+        "not_for": "incomplete-input substitution or future water-quality forecasting",
     }
     manifest_path = PROJECT_ROOT / "models" / "production_model_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -643,7 +647,7 @@ def main() -> None:
             "sample_size_metrics_by_fold.csv",
         ],
         "sample_size_metrics_source": "results/sample_size_experiments/metrics",
-        "sample_size_outputs_scope": "requested 1,000, 10,000, and 50,000 row settings; local 5,000 row results are excluded from the publication-facing sample-size CSVs.",
+        "sample_size_outputs_scope": "Requested 1,000, 10,000, and 50,000 row settings; local 5,000 row results are excluded from the main sample-size CSVs.",
         "paired_error_tests_source": display_path(complete_input_gpu_dir / "repeated_split_results.csv"),
         "paired_error_tests_method": "Reported p-value is the Holm-adjusted paired t-test p-value over complete-input GPU repeated-split MAE values. Rows are paired by seed, and Holm correction is applied across the 15 trainable-model comparisons.",
         "large_artifacts_policy": "Large raw models/predictions remain under ignored results/missing_indicator_robustness and results/stress107 directories and are not committed.",
