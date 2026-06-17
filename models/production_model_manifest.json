@@ -93,5 +93,5 @@
     }
   ],
   "api_contract": "complete-input WQI5 surrogate; required features are DO, BOD, NH3N, EC, SS",
-  "not_for": "missing-indicator replacement or future water-quality forecasting"
+  "not_for": "incomplete-input substitution or future water-quality forecasting"
 }
