@@ -14,7 +14,7 @@ service = WaterQualityService()
 
 app = FastAPI(
     title="WQSurrogateModels API",
-    version="2.1.0",
+    version="2.0.0",
     description=(
         "WQI5-based current-state water quality assessment backend. "
         "Supports a direct WQI5 baseline and surrogate regression models.\n\n"
