@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+    tags:
+      - "WQSurrogateModels-v*"
   pull_request:
     branches: [main]
 

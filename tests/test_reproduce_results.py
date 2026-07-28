@@ -6,17 +6,47 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 
-def test_reproduce_results_tiny_config(tmp_path: Path) -> None:
+@pytest.fixture
+def synthetic_datasets(tmp_path: Path) -> tuple[Path, Path]:
+    fieldnames = ["DO", "BOD", "NH3N", "EC", "SS", "Score"]
+    scores = [10.0, 30.0, 50.0, 70.0, 90.0]
+    rows = [
+        {
+            "DO": round(20.0 + ((index * 7) % 100), 3),
+            "BOD": round(0.5 + ((index * 3) % 40) / 10.0, 3),
+            "NH3N": round(0.05 + ((index * 5) % 30) / 100.0, 3),
+            "EC": round(100.0 + ((index * 11) % 900), 3),
+            "SS": round(2.0 + ((index * 13) % 80), 3),
+            "Score": scores[index % len(scores)],
+        }
+        for index in range(1040)
+    ]
+    subset_path = tmp_path / "dataset_1000.csv"
+    full_path = tmp_path / "dataset_full.csv"
+    for path, selected_rows in ((subset_path, rows[:1000]), (full_path, rows)):
+        with path.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(selected_rows)
+    return subset_path, full_path
+
+
+def test_reproduce_results_tiny_config(
+    tmp_path: Path,
+    synthetic_datasets: tuple[Path, Path],
+) -> None:
     project_root = Path(__file__).resolve().parents[1]
+    subset_path, _ = synthetic_datasets
     output_dir = tmp_path / "results_tiny_test"
     config_path = tmp_path / "tiny_config.yaml"
     config_path.write_text(
         yaml.safe_dump(
             {
-                "dataset": "data/dataV1_1000.csv",
+                "dataset": str(subset_path),
                 "output_dir": str(output_dir.relative_to(project_root.parent))
                 if output_dir.is_relative_to(project_root.parent)
                 else str(output_dir),
@@ -46,8 +76,12 @@ def test_reproduce_results_tiny_config(tmp_path: Path) -> None:
     assert expected_files.issubset({path.name for path in output_dir.glob("*.csv")})
 
 
-def test_reproduce_results_refuses_to_overwrite_existing_results(tmp_path: Path) -> None:
+def test_reproduce_results_refuses_to_overwrite_existing_results(
+    tmp_path: Path,
+    synthetic_datasets: tuple[Path, Path],
+) -> None:
     project_root = Path(__file__).resolve().parents[1]
+    subset_path, _ = synthetic_datasets
     output_dir = tmp_path / "existing_results"
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "metrics_summary.csv").write_text("already-exists\n", encoding="utf-8")
@@ -56,7 +90,7 @@ def test_reproduce_results_refuses_to_overwrite_existing_results(tmp_path: Path)
     config_path.write_text(
         yaml.safe_dump(
             {
-                "dataset": "data/dataV1_1000.csv",
+                "dataset": str(subset_path),
                 "output_dir": str(output_dir),
                 "test_size": 0.2,
                 "seeds": [0],
@@ -78,8 +112,12 @@ def test_reproduce_results_refuses_to_overwrite_existing_results(tmp_path: Path)
     assert "Use --output-dir to write elsewhere or pass --overwrite explicitly" in (process.stderr or process.stdout)
 
 
-def test_sample_size_experiments_tiny_workflow(tmp_path: Path) -> None:
+def test_sample_size_experiments_tiny_workflow(
+    tmp_path: Path,
+    synthetic_datasets: tuple[Path, Path],
+) -> None:
     project_root = Path(__file__).resolve().parents[1]
+    subset_path, _ = synthetic_datasets
     output_dir = tmp_path / "sample_size_results"
     model_dir = tmp_path / "sample_size_models"
 
@@ -88,7 +126,7 @@ def test_sample_size_experiments_tiny_workflow(tmp_path: Path) -> None:
             sys.executable,
             "scripts/run_sample_size_experiments.py",
             "--datasets",
-            "data/dataV1_1000.csv",
+            str(subset_path),
             "--models",
             "lr",
             "--n-splits",
@@ -116,8 +154,8 @@ def test_sample_size_experiments_tiny_workflow(tmp_path: Path) -> None:
     assert expected_files.issubset(
         {str(path.relative_to(output_dir)) for path in output_dir.rglob("*") if path.is_file()}
     )
-    assert (model_dir / "LR" / "dataV1_1000" / "fold_1" / "lr.pkl").exists()
-    assert (model_dir / "LR" / "dataV1_1000" / "fold_2" / "lr.pkl").exists()
+    assert (model_dir / "LR" / "dataset_1000" / "fold_1" / "lr.pkl").exists()
+    assert (model_dir / "LR" / "dataset_1000" / "fold_2" / "lr.pkl").exists()
 
     with (output_dir / "metrics" / "metrics_by_fold.csv").open("r", encoding="utf-8") as handle:
         metric_rows = list(csv.DictReader(handle))
@@ -126,14 +164,18 @@ def test_sample_size_experiments_tiny_workflow(tmp_path: Path) -> None:
     assert {row["split"] for row in metric_rows} == {"train", "test"}
 
 
-def test_reproduce_reduced_indicators_tiny_config(tmp_path: Path) -> None:
+def test_reproduce_reduced_indicators_tiny_config(
+    tmp_path: Path,
+    synthetic_datasets: tuple[Path, Path],
+) -> None:
     project_root = Path(__file__).resolve().parents[1]
+    subset_path, _ = synthetic_datasets
     output_dir = tmp_path / "reduced_tiny_test"
     config_path = tmp_path / "reduced_tiny_config.yaml"
     config_path.write_text(
         yaml.safe_dump(
             {
-                "dataset": "data/dataV1_1000.csv",
+                "dataset": str(subset_path),
                 "output_dir": str(output_dir),
                 "test_size": 0.2,
                 "compute_device": "cpu",
@@ -172,8 +214,12 @@ def test_reproduce_reduced_indicators_tiny_config(tmp_path: Path) -> None:
     assert not any(row["scenario"] == "low_cost_core" and row["model_type"] == "direct_wqi5" for row in rows)
 
 
-def test_reproduce_reduced_indicators_refuses_to_overwrite_existing_results(tmp_path: Path) -> None:
+def test_reproduce_reduced_indicators_refuses_to_overwrite_existing_results(
+    tmp_path: Path,
+    synthetic_datasets: tuple[Path, Path],
+) -> None:
     project_root = Path(__file__).resolve().parents[1]
+    subset_path, _ = synthetic_datasets
     output_dir = tmp_path / "existing_reduced_results"
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "reduced_indicator_results.csv").write_text("already-exists\n", encoding="utf-8")
@@ -182,7 +228,7 @@ def test_reproduce_reduced_indicators_refuses_to_overwrite_existing_results(tmp_
     config_path.write_text(
         yaml.safe_dump(
             {
-                "dataset": "data/dataV1_1000.csv",
+                "dataset": str(subset_path),
                 "output_dir": str(output_dir),
                 "test_size": 0.2,
                 "compute_device": "cpu",
@@ -208,15 +254,19 @@ def test_reproduce_reduced_indicators_refuses_to_overwrite_existing_results(tmp_
     assert "Use --output-dir to write elsewhere or pass --overwrite explicitly" in (process.stderr or process.stdout)
 
 
-def test_missing_indicator_experiments_tiny_config(tmp_path: Path) -> None:
+def test_missing_indicator_experiments_tiny_config(
+    tmp_path: Path,
+    synthetic_datasets: tuple[Path, Path],
+) -> None:
     project_root = Path(__file__).resolve().parents[1]
+    subset_path, full_path = synthetic_datasets
     output_dir = tmp_path / "missing_indicator_tiny_test"
     config_path = tmp_path / "missing_indicator_tiny_config.yaml"
     config_path.write_text(
         yaml.safe_dump(
             {
-                "dataset_50000": "data/dataV1_1000.csv",
-                "full_dataset": "data/dataV1.csv",
+                "dataset_50000": str(subset_path),
+                "full_dataset": str(full_path),
                 "output_dir": str(output_dir),
                 "test_size": 0.2,
                 "expected_external_rows": None,
@@ -336,8 +386,12 @@ def test_missing_indicator_experiments_tiny_config(tmp_path: Path) -> None:
     assert (output_dir / "stress_tests" / "stress_summary.csv").exists()
 
 
-def test_missing_indicator_experiments_refuses_to_overwrite_existing_results(tmp_path: Path) -> None:
+def test_missing_indicator_experiments_refuses_to_overwrite_existing_results(
+    tmp_path: Path,
+    synthetic_datasets: tuple[Path, Path],
+) -> None:
     project_root = Path(__file__).resolve().parents[1]
+    subset_path, full_path = synthetic_datasets
     output_dir = tmp_path / "existing_missing_indicator_results"
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "manifest.json").write_text("already-exists\n", encoding="utf-8")
@@ -346,8 +400,8 @@ def test_missing_indicator_experiments_refuses_to_overwrite_existing_results(tmp
     config_path.write_text(
         yaml.safe_dump(
             {
-                "dataset_50000": "data/dataV1_1000.csv",
-                "full_dataset": "data/dataV1.csv",
+                "dataset_50000": str(subset_path),
+                "full_dataset": str(full_path),
                 "output_dir": str(output_dir),
                 "test_size": 0.2,
                 "expected_external_rows": None,
@@ -382,15 +436,19 @@ def test_missing_indicator_experiments_refuses_to_overwrite_existing_results(tmp
     assert "Output directory already contains files" in (process.stderr or process.stdout)
 
 
-def test_missing_indicator_robustness_tiny_workflow(tmp_path: Path) -> None:
+def test_missing_indicator_robustness_tiny_workflow(
+    tmp_path: Path,
+    synthetic_datasets: tuple[Path, Path],
+) -> None:
     project_root = Path(__file__).resolve().parents[1]
+    subset_path, full_path = synthetic_datasets
     output_dir = tmp_path / "robustness_tiny"
     config_path = tmp_path / "missing_indicator_robustness_tiny.yaml"
     config_path.write_text(
         yaml.safe_dump(
             {
-                "dataset_50000": "data/dataV1_1000.csv",
-                "full_dataset": "data/dataV1.csv",
+                "dataset_50000": str(subset_path),
+                "full_dataset": str(full_path),
                 "output_dir": str(output_dir),
                 "test_size": 0.2,
                 "expected_external_rows": None,

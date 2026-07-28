@@ -10,6 +10,11 @@ from src.api import app
 from src.wqi import categorize_score, direct_wqi5_score
 
 
+@pytest.fixture
+def anyio_backend() -> str:
+    return "asyncio"
+
+
 def test_direct_wqi5_formula_returns_bounded_score():
     score = direct_wqi5_score(do=96.2, bod=1.5, nh3n=0.22, ec=171, ss=2.6)
     assert 0 <= score <= 100
