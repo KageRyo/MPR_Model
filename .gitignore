@@ -164,8 +164,12 @@ results/
 results_*/
 
 # Local model artifacts
-models/**/*.pkl
+*.pkl
+*.joblib
 archive/sample_size_raw_runs/
+
+# Private datasets and row-level exports
+data/**
 
 # Generated statistical-analysis outputs
 statistics/outputs/
