@@ -85,9 +85,8 @@ pip install -e ".[dev]"
 ```
 
 Local or externally provided scikit-learn surrogate artifacts should be loaded
-with the compatible scikit-learn version used during export. Model binaries are
-not committed to Git; see `models/production_model_manifest.json`
-for the expected local paths.
+with the compatible scikit-learn version used during export. See
+`models/production_model_manifest.json` for the expected local paths.
 
 To also enable the full set of surrogate models (`xgboost`, `lightgbm`):
 
@@ -97,9 +96,13 @@ pip install -e ".[dev,models]"
 
 ## Local Inference Artifacts
 
-Model binaries are local artifacts and are not committed to Git.
-`models/production_model_manifest.json` describes the paths expected by the
-API. Locally generated surrogate artifacts require:
+Research datasets and trained model binaries are not distributed through this
+repository or its releases. They must be supplied locally under the applicable
+data-access terms.
+
+`models/production_model_manifest.json` contains metadata and expected local
+paths only; it does not contain serialized model parameters or executable model
+binaries. Locally generated surrogate artifacts require:
 
 ```text
 DO, BOD, NH3N, EC, SS
@@ -164,11 +167,11 @@ Experiments and statistics:
 
 ## Reproducibility
 
-The following workflows require compatible local CSV inputs. The complete
-dataset and preprocessed experiment subsets are not included in a clone;
-download source data from the official monitoring information network and
-prepare the inputs as described in [Data Preparation](docs/data_preparation.md)
-before configuring paths and running a workflow.
+The following workflows require compatible local CSV inputs. The exact study
+dataset is not distributed and cannot be reconstructed from this repository
+alone. The instructions in [Data Preparation](docs/data_preparation.md)
+describe how to prepare a schema-compatible local dataset from publicly
+available monitoring data before configuring paths and running a workflow.
 
 Run:
 
@@ -298,8 +301,8 @@ Repeated validation uses stratified random splits over WQI5 categories with seed
 
 ## Project Structure
 
-- `data/`: ignored locally prepared datasets and subsets (not committed)
-- `models/`: local inference manifest and artifact paths; model binaries are not committed
+- `data/`: ignored locally prepared datasets and subsets, excluded from the current repository tree
+- `models/`: local inference manifest and artifact paths; trained model binaries are not distributed through this repository or its releases
 - `src/`: API and reusable backend logic
 - `scripts/`: reproducibility runners
 - `configs/`: experiment settings
@@ -307,10 +310,10 @@ Repeated validation uses stratified random splits over WQI5 categories with seed
 
 ## License
 
-The Apache License 2.0 applies only to this repository's source code. See
-[`LICENSE`](LICENSE).
+The Apache License 2.0 applies to the source code and documentation included in
+the current repository, unless otherwise stated. See [`LICENSE`](LICENSE).
 
-It does not grant any rights to data used for training, validation, or
-experiments. The complete dataset and preprocessed experiment subsets are not
-distributed with this repository; obtain monitoring data from the official
-information network and comply with the applicable source terms.
+It does not grant any rights to research datasets, trained model artifacts, or
+other materials that are not distributed with this repository. Obtain
+monitoring data from the official information network and comply with the
+applicable source terms.

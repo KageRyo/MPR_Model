@@ -36,9 +36,11 @@ This repository does not perform temporal forecasting.
 
 ## Local Inference Artifacts
 
-Model binaries are local artifacts and are not committed to Git. The
-`models/production_model_manifest.json` file documents the paths expected by
-the API for each supported surrogate model.
+Research datasets and trained model binaries are not distributed through this
+repository or its releases. The
+`models/production_model_manifest.json` file contains metadata and expected
+local paths only; it does not contain serialized model parameters or executable
+model binaries.
 
 The local inference artifacts are complete-input WQI5 surrogates:
 
