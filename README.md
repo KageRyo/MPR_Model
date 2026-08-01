@@ -6,14 +6,6 @@
 
 WQSurrogateModels is a FastAPI backend for WQI5-based water quality assessment. It provides a direct WQI5 formula baseline, surrogate regression models, API endpoints, and scripts for reproducing the experiments.
 
-> Scope: this repository assesses current water quality state from five physicochemical indicators.
-> The prepared experiment input is cross-sectional and contains no timestamp field.
-> This repository does not include the complete dataset, processed experiment
-> table, or experiment subsets. Download water-quality monitoring data from the
-> [Ministry of Environment's National Environmental Water Quality Monitoring Information Network](https://wq.moenv.gov.tw/EWQP/zh/ConService/DownLoad/HistoryData.aspx),
-> then prepare a compatible local CSV as described in
-> [Data Preparation](docs/data_preparation.md).
-
 It provides:
 
 - a `direct_wqi5` baseline
