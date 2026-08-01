@@ -3,15 +3,15 @@
 ## Scope
 
 This report summarizes complete-input GPU performance, missing-indicator results, 107-window stress-test results, and CPU-only timing outputs.
-It reports R2, MAE, RMSE, Macro-F1, bootstrap confidence intervals, and paired model tests.
+It reports R², MAE, RMSE, Macro-F1, bootstrap confidence intervals, and paired model tests.
 
 The task remains WQI5 surrogate regression, not future water-quality forecasting. Direct WQI5 computation remains the reference method when all five indicators are available.
 
 ## Main Findings
 
-- Complete-input GPU repeated-split best model: `xgboost` with R2=0.9996, MAE=0.2638, RMSE=0.4241.
-- Missing NH3N reduced retraining remains useful as an auxiliary setting: `lightgbm` with R2=0.9494, MAE=2.3694.
-- DO/EC/SS-only reduced retraining is not reliable on the external hold-out: `rf` with R2=-0.1401, MAE=14.7246.
+- Complete-input GPU repeated-split best model: `xgboost` with R²=0.9996, MAE=0.2638, RMSE=0.4241.
+- Missing NH3N reduced retraining remains useful as an auxiliary setting: `lightgbm` with R²=0.9494, MAE=2.3694.
+- DO/EC/SS-only reduced retraining is not reliable on the external hold-out: `rf` with R²=-0.1401, MAE=14.7246.
 - The 107-window stress test uses sequential event windows, not 107-fold cross-validation.
 - CPU-only timing is a rough inference-time reference; GPU/multicore acceleration is used only for experiment reproduction.
 - Pairwise model comparisons use complete-input GPU repeated-split MAE with Holm-adjusted paired t-test p-values across the 15 model pairs.
@@ -30,7 +30,11 @@ The task remains WQI5 surrogate regression, not future water-quality forecasting
 
 ## Sample-Size Sensitivity
 
-The sample-size experiment evaluates six surrogate models using 1,000, 10,000, and 50,000 rows under stratified 80/20 splits. The summary output is `sample_size_sensitivity.csv`, and fold-level results are provided in `sample_size_metrics_by_fold.csv`.
+The published sample-size summary covers six surrogate models using 1,000,
+10,000, and 50,000 rows under stratified 80/20 splits. The workflow also
+supports a 5,000-row setting, which is not included in these summary files. The
+summary output is `sample_size_sensitivity.csv`, and fold-level results are
+provided in `sample_size_metrics_by_fold.csv`.
 
 ## Pairwise Error Tests
 
@@ -56,7 +60,13 @@ Complete-input GPU comparisons use repeated-split MAE values paired by seed. `A-
 
 ## Reporting Boundary
 
-The p-values test paired MAE differences from `results/complete_input_gpu/repeated_split_results.csv`, matched by `seed`. The complete-input GPU archive contains split-level metrics rather than per-row predictions, so the paired tests use five seed-level paired values per model comparison.
-All 15 model pairs are significant under this paired t-test because every pair has same-direction MAE differences across the five seeds. These tests use seed-level MAE values rather than row-level absolute errors.
+The p-values test paired MAE differences from
+`results/complete_input_gpu/repeated_split_results.csv`, matched by `seed`. The
+complete-input GPU result bundle contains split-level metrics rather than
+per-row predictions, so the paired tests use five seed-level paired values per
+model comparison.
+All 15 model pairs are significant under this paired t-test because every pair
+has same-direction MAE differences across the five seeds. These seed-level tests
+do not use row-level absolute errors.
 
 The 107-window stress test reduces dependence on a single selected middle window, but it does not prove absence of all sampling bias and is not a real pollution-event validation.

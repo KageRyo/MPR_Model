@@ -4,7 +4,8 @@ This directory contains the statistical post-processing workflow and result pack
 
 ## Results
 
-- Main report: [`outputs/statistical_analysis_report.md`](outputs/statistical_analysis_report.md)
+- Statistical summary: [`outputs/statistical_summary.md`](outputs/statistical_summary.md)
+- Statistical analysis report: [`outputs/statistical_analysis_report.md`](outputs/statistical_analysis_report.md)
 - Method notes: [`../docs/statistical-analysis.md`](../docs/statistical-analysis.md)
 - Figures: [`outputs/figures/`](outputs/figures/)
 
@@ -23,6 +24,10 @@ The available result files are:
 The report includes summary metrics, confidence intervals, complete-input GPU
 paired MAE tests, descriptive feature-score correlations, 107-window stress-test
 summaries, CPU-only timing, and rendered residual figures.
+
+The published sample-size summaries cover the `1,000`, `10,000`, and
+`50,000`-row settings. The sample-size workflow also supports a `5,000`-row
+setting, which is not included in these published summary files.
 
 ## Reproduce Results
 

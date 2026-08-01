@@ -459,23 +459,23 @@ def write_report(
         "## Scope",
         "",
         "This report summarizes complete-input GPU performance, missing-indicator results, 107-window stress-test results, and CPU-only timing outputs.",
-        "It replaces the earlier percentage-agreement tables with R2, MAE, RMSE, Macro-F1, bootstrap confidence intervals, and paired model tests.",
+        "It reports R², MAE, RMSE, Macro-F1, bootstrap confidence intervals, and paired model tests.",
         "",
         "The task remains WQI5 surrogate regression, not future water-quality forecasting. Direct WQI5 computation remains the reference method when all five indicators are available.",
         "",
         "## Main Findings",
         "",
-        f"- Complete-input GPU repeated-split best model: `{best_full['model_type']}` with R2={best_full['r2_mean']:.4f}, MAE={best_full['mae_mean']:.4f}, RMSE={best_full['rmse_mean']:.4f}.",
+        f"- Complete-input GPU repeated-split best model: `{best_full['model_type']}` with R²={best_full['r2_mean']:.4f}, MAE={best_full['mae_mean']:.4f}, RMSE={best_full['rmse_mean']:.4f}."
     ]
     if not missing_nh3n.empty:
         row = missing_nh3n.iloc[0]
         lines.append(
-            f"- Missing NH3N reduced retraining remains useful as an auxiliary setting: `{row['model_type']}` with R2={row['r2_mean']:.4f}, MAE={row['mae_mean']:.4f}."
+            f"- Missing NH3N reduced retraining remains useful as an auxiliary setting: `{row['model_type']}` with R²={row['r2_mean']:.4f}, MAE={row['mae_mean']:.4f}."
         )
     if not missing_bod_nh3n.empty:
         row = missing_bod_nh3n.iloc[0]
         lines.append(
-            f"- DO/EC/SS-only reduced retraining is not reliable on the external hold-out: `{row['model_type']}` with R2={row['r2_mean']:.4f}, MAE={row['mae_mean']:.4f}."
+            f"- DO/EC/SS-only reduced retraining is not reliable on the external hold-out: `{row['model_type']}` with R²={row['r2_mean']:.4f}, MAE={row['mae_mean']:.4f}."
         )
     lines.extend(
         [
@@ -497,7 +497,7 @@ def write_report(
             "",
             "## Sample-Size Sensitivity",
             "",
-            "The sample-size experiment evaluates six surrogate models using 1,000, 10,000, and 50,000 rows under stratified 80/20 splits. The summary output is `sample_size_sensitivity.csv`, and fold-level results are provided in `sample_size_metrics_by_fold.csv`.",
+            "The published sample-size summary covers six surrogate models using 1,000, 10,000, and 50,000 rows under stratified 80/20 splits. The workflow also supports a 5,000-row setting, which is not included in these summary files. The summary output is `sample_size_sensitivity.csv`, and fold-level results are provided in `sample_size_metrics_by_fold.csv`.",
             "",
         ]
     )
@@ -506,8 +506,8 @@ def write_report(
         [
             "## Reporting Boundary",
             "",
-            "The p-values test paired MAE differences from `results/complete_input_gpu/repeated_split_results.csv`, matched by `seed`. The complete-input GPU archive contains split-level metrics rather than per-row predictions, so the paired tests use five seed-level paired values per model comparison.",
-            "All 15 model pairs are significant under this paired t-test because every pair has same-direction MAE differences across the five seeds. This is not the same data granularity as the earlier 10,714-row paired absolute-error Wilcoxon table.",
+            "The p-values test paired MAE differences from `results/complete_input_gpu/repeated_split_results.csv`, matched by `seed`. The complete-input GPU result bundle contains split-level metrics rather than per-row predictions, so the paired tests use five seed-level paired values per model comparison.",
+            "All 15 model pairs are significant under this paired t-test because every pair has same-direction MAE differences across the five seeds. These seed-level tests do not use row-level absolute errors.",
             "",
             "The 107-window stress test reduces dependence on a single selected middle window, but it does not prove absence of all sampling bias and is not a real pollution-event validation.",
         ]
@@ -647,7 +647,7 @@ def main() -> None:
             "sample_size_metrics_by_fold.csv",
         ],
         "sample_size_metrics_source": "results/sample_size_experiments/metrics",
-        "sample_size_outputs_scope": "Requested 1,000, 10,000, and 50,000 row settings; local 5,000 row results are excluded from the main sample-size CSVs.",
+        "sample_size_outputs_scope": "Published sample-size CSVs cover the 1,000, 10,000, and 50,000 row settings. The workflow also supports a 5,000 row setting, which is not included in these outputs.",
         "paired_error_tests_source": display_path(complete_input_gpu_dir / "repeated_split_results.csv"),
         "paired_error_tests_method": "Reported p-value is the Holm-adjusted paired t-test p-value over complete-input GPU repeated-split MAE values. Rows are paired by seed, and Holm correction is applied across the 15 trainable-model comparisons.",
         "large_artifacts_policy": "Large raw models/predictions remain under ignored results/missing_indicator_robustness and results/stress107 directories and are not committed.",

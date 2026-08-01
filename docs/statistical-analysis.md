@@ -31,7 +31,7 @@ Percentage-agreement metrics are not used as primary reporting metrics.
 ## Confidence Intervals
 
 The missing-indicator robustness workflow runs five stratified seeds over a
-private local `50,000`-row subset:
+locally prepared `50,000`-row subset:
 
 - `40,000` training rows per seed
 - `10,000` internal-test rows per seed
@@ -149,8 +149,9 @@ actually tested.
 
 ## Report
 
-The statistical summary is:
+The generated statistical reports are:
 
 ```text
 statistics/outputs/statistical_summary.md
+statistics/outputs/statistical_analysis_report.md
 ```
