@@ -7,9 +7,11 @@ deterministic WQI5 computation.
 
 ## Data Split
 
-The workflow uses a private local `50,000`-row subset for stratified `80/20`
-training and internal testing. Remaining rows from the compatible
-`60,714`-row input form a fixed held-out inference set.
+The workflow uses a locally prepared `50,000`-row subset for stratified
+`80/20` training and internal testing. Remaining rows from the compatible
+`60,714`-row input form a fixed held-out inference set. See
+[data_preparation.md](data_preparation.md) for the official download source and
+local preparation contract.
 
 For each seed:
 
@@ -151,13 +153,13 @@ The output directory is organized as:
 - `timing/cpu_only_inference_timing_summary.csv`: CPU-only timing summary.
 - `reports/missing_indicator_robustness_summary.xlsx`: formatted workbook.
 
-The dataset, split indices, row-level predictions, workbooks, and model
-artifacts are private local outputs and must not be committed.
+Downloaded data, local subsets, split indices, row-level predictions, workbooks,
+and model artifacts are local-only outputs and must not be committed.
 
 ## Interpretation Boundary
 
 Complete-input deterministic WQI5 remains the reference method when all five
 indicators are available. Reduced, dropout, or reconstructed-indicator settings
 evaluate auxiliary behavior under incomplete-input constraints. Negative
-external hold-out R2 should be interpreted as a generalization limitation, not
+external hold-out R² should be interpreted as a generalization limitation, not
 hidden or reframed as successful substitution for complete-input WQI5.

@@ -8,10 +8,11 @@ in
 
 ## Data Split
 
-The experiment uses a private local `50,000`-row subset for training and
+The experiment uses a locally prepared `50,000`-row subset for training and
 internal testing. Remaining rows from the compatible `60,714`-row input form a
 fixed held-out inference set. The script verifies that the subset is an exact
-prefix of the full input.
+prefix of the full input. See [data_preparation.md](data_preparation.md) for
+the official download source and local preparation contract.
 
 For each seed, the subset is split with stratified `80/20` sampling by
 WQI5 category:
@@ -88,8 +89,8 @@ The output directory contains:
 - `stress_tests/stress_summary.csv`: scenario-based stress-test response
   summaries.
 
-The dataset, split indices, predictions, and model artifacts are private local
-outputs and must not be committed.
+Downloaded data, local subsets, split indices, predictions, and model artifacts
+are local-only outputs and must not be committed.
 
 ## Interpretation Boundary
 

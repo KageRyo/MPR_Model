@@ -1,21 +1,32 @@
 # Data Preparation
 
-The dataset used by the experiment workflows is not distributed with this
-repository. This page documents only its size, schema, and preprocessing
-contract so that users can prepare a compatible local input.
+This repository does not distribute the complete source dataset, the processed
+experiment table, or experiment subsets. Download water-quality monitoring data
+from the [Ministry of Environment's National Environmental Water Quality Monitoring Information Network](https://wq.moenv.gov.tw/EWQP/zh/ConService/DownLoad/HistoryData.aspx),
+then use the schema and preprocessing contract below to prepare a compatible
+local input. Data obtained from the source remain subject to the applicable
+source terms.
 
 ## Dataset Summary
 
 - Original records: approximately `87,005`
 - Records after preprocessing: `60,714`
 - File format: CSV with a header row
-- Data layout: cross-sectional rows with no timestamp field
+- Prepared data layout: cross-sectional rows with no timestamp field
 - Feature columns: `DO`, `BOD`, `NH3N`, `EC`, `SS`
 - Target column: `Score`, a dimensionless WQI5 score
 - Expected column order: `DO,BOD,NH3N,EC,SS,Score`
 
 All six columns are numeric. Experiment scripts derive WQI5 categories from
 `Score` when stratified splits are requested.
+
+## Training-Data-Volume Experiments
+
+To assess sensitivity to training-data volume, the sample-size workflow uses
+locally prepared subsets of `1,000`, `5,000`, `10,000`, and `50,000` rows.
+Each subset must follow the same six-column schema and preprocessing contract
+described on this page. See [sample-size-experiments.md](sample-size-experiments.md)
+for the split protocol, run commands, and reported metrics.
 
 ## Preprocessing
 
@@ -34,7 +45,7 @@ values.
 
 ## Local Use
 
-Files under `data/` are private local inputs and are ignored by Git. Configure
-the dataset paths in `.env` and `configs/*.yaml` before running data-dependent
-endpoints or experiments. Do not commit local datasets, subsets, or derived
-row-level exports.
+Files under `data/` are locally prepared inputs and are ignored by Git.
+Configure the dataset paths in `.env` and `configs/*.yaml` before running
+data-dependent endpoints or experiments. Do not commit downloaded data, local
+subsets, or derived row-level exports.

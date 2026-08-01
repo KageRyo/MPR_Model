@@ -1,7 +1,10 @@
 # Experiment Protocol
 
 This document describes the reproducibility workflow. Dataset paths refer to
-private local inputs that are not included in the repository.
+locally prepared CSV inputs; the repository does not include the complete
+dataset or preprocessed experiment subsets. See
+[data_preparation.md](data_preparation.md) for the official download source and
+preparation contract.
 
 ## Task Definition
 
@@ -13,7 +16,8 @@ This repository evaluates `current-state WQI5 surrogate regression` from five wa
 - `EC`
 - `SS`
 
-The task is not forecasting. The reference dataset has no timestamp field.
+The task is not forecasting. The prepared experiment input has no timestamp
+field.
 
 ## Split Strategy
 
@@ -57,10 +61,9 @@ python scripts/reproduce_results.py \
 ```
 
 `xgboost` uses CUDA through `device="cuda:<gpu_id>"` and `tree_method="hist"`.
-The installed LightGBM package should be verified before use; this environment
-supports `device_type="gpu"` through the OpenCL backend, while
-`device_type="cuda"` requires a LightGBM build compiled with CUDA support.
-The scikit-learn models in this workflow remain CPU-based.
+LightGBM GPU support depends on the installed build: `device_type="gpu"` uses
+the OpenCL backend, while `device_type="cuda"` requires a CUDA-enabled LightGBM
+build. The scikit-learn models in this workflow remain CPU-based.
 
 ## Reduced-Indicator Experiment
 

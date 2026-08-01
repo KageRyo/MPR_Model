@@ -12,8 +12,9 @@ Sample sizes:
 - `10,000` rows
 - `50,000` rows
 
-Each subset is a private local CSV with the schema documented in
-[data_preparation.md](data_preparation.md).
+Each subset is a locally prepared CSV with the schema documented in
+[data_preparation.md](data_preparation.md). The repository does not include the
+complete dataset or these experiment subsets.
 
 ## Models
 
@@ -126,5 +127,5 @@ models/sample_size_experiments/LR/subset_1000/fold_1/lr.pkl
 models/sample_size_experiments/XGBoost/subset_50000/fold_5/xgboost.pkl
 ```
 
-Datasets, split-index exports, predictions, and model artifacts are local-only
-files and must not be committed.
+Downloaded data, local subsets, split-index exports, predictions, and model
+artifacts are local-only files and must not be committed.

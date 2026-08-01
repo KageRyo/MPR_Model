@@ -67,8 +67,10 @@ local output directories.
 
 ## Limitations
 
-- Dataset files are private inputs and are not distributed.
-- The documented reference data do not contain timestamps.
+- This repository does not include the complete dataset, processed experiment
+  table, or experiment subsets. See [data_preparation.md](data_preparation.md)
+  for the official download source and preparation contract.
+- The prepared experiment input does not contain timestamps.
 - Optional model families such as `xgboost` and `lightgbm` require their corresponding runtime dependencies.
 - External hold-out results show that `BOD` is a critical indicator; reduced-input settings without `BOD` should be interpreted conservatively.
 - CPU-only timing is a rough inference-time reference, not direct proof of performance on a low-end edge device.

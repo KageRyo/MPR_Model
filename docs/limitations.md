@@ -1,10 +1,12 @@
 # Limitations
 
-- Dataset files are private inputs and are not distributed with this repository.
-- The documented reference data do not contain timestamps, so this repository
+- This repository does not include the complete dataset, processed experiment
+  table, or experiment subsets. Monitoring data can be downloaded from the
+  official source described in [data_preparation.md](data_preparation.md).
+- The prepared experiment input does not contain timestamps, so this repository
   should not be described as a temporal forecasting system.
-- Public data documentation is limited to aggregate row counts, the six-column
-  schema, and preprocessing operations.
+- The repository documents only the aggregate row counts, six-column schema,
+  and preprocessing operations needed to prepare a compatible local input.
 - The supported task is cross-sectional WQI5 assessment rather than
   time-dependent prediction.
 - Optional surrogate model families such as `xgboost` and `lightgbm` require additional runtime dependencies when training or loading those artifacts.
