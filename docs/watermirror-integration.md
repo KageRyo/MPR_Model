@@ -48,7 +48,8 @@ WQSurrogateModels is the backend and model repository.
 
 ## 2. Deprecated Legacy Endpoints (Compatibility Only)
 
-These are kept so existing WaterMirror and old demos do not break.
+These endpoints are retained to avoid breaking existing WaterMirror
+integrations.
 **Do not use in new code.**
 
 | Deprecated          | New Primary (`/api/v2`)                  | Notes |
@@ -61,7 +62,8 @@ These are kept so existing WaterMirror and old demos do not break.
 | `POST /score/total/`| `POST /api/v2/assessment/csv/summary`    | CSV mean |
 | `POST /score/all/`  | `POST /api/v2/assessment/csv/rows`       | CSV per-row |
 
-All legacy endpoints are annotated with `deprecated=True` in the OpenAPI schema and will eventually be removed in a future major version.
+All legacy endpoints are annotated with `deprecated=True` in the OpenAPI schema
+and may be removed in a future major version.
 
 ---
 
@@ -162,6 +164,5 @@ EXPO_PUBLIC_REQUEST_TIMEOUT_MS=10000
 
 ---
 
-**Primary contract moved to /api/v2/* while preserving backward compatibility.**
-
-Last updated: 2026 (v2 refactor)
+**Primary contract: `/api/v2/*`; legacy endpoints are retained for backward
+compatibility.**

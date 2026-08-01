@@ -47,7 +47,7 @@ Use descriptive names prefixed by category:
 - `test/…` for tests
 
 Examples:
-- `feature/add-lstm-model`
+- `feature/add-model-validation`
 - `fix/csv-parsing-error`
 - `docs/update-readme`
 

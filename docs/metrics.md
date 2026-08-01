@@ -19,9 +19,9 @@ residual_i = y_i - ŷ_i
 
 where `y_i` is the reference WQI5 score and `ŷ_i` is the model-estimated WQI5 score.
 
-## Archived Percentage-Agreement Metric
+## Percentage-Agreement Metric
 
-Legacy comparison tables included a percentage-agreement metric derived from
+Some comparison tables include a percentage-agreement metric derived from
 absolute percentage error. It is not used as a primary reporting metric because
 the task is continuous WQI5 regression. Primary reporting should use `R²`,
 `MAE`, `RMSE`, `NMAE`, residual statistics, WQI-band accuracy / macro-F1,
