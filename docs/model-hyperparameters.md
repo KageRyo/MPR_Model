@@ -1,7 +1,6 @@
 # Model Hyperparameters
 
-This document distinguishes between the current reproducibility workflow and
-the archived exploratory scripts.
+This document describes the current reproducibility workflow.
 
 ## Reproducibility Workflow
 
@@ -23,19 +22,3 @@ parameters. `xgboost` uses `tree_method="hist"` and `device="cuda:<gpu_id>"`.
 LightGBM uses `device_type="gpu"` for OpenCL-capable builds; its CUDA tree
 learner requires a CUDA-enabled LightGBM build. The scikit-learn models remain
 CPU-based in this reproducibility workflow.
-
-## Archived Exploratory Scripts
-
-The archived training scripts under `archive/legacy_training/` reflect an
-earlier exploratory workflow. Current reproducibility and training workflows are
-kept under `scripts/`.
-
-Common characteristics include:
-
-- `80/20` train-test splits with `random_state=0`
-- `5-fold GridSearchCV`
-- polynomial degree candidates from `1` to `6` for MPR-style pipelines
-- some model-specific parameters left at library defaults
-
-The archived exploratory scripts are not identical to the current
-reproducibility workflow.

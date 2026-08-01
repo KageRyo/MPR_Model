@@ -7,8 +7,12 @@
 WQSurrogateModels is a FastAPI backend for WQI5-based water quality assessment. It provides a direct WQI5 formula baseline, surrogate regression models, API endpoints, and scripts for reproducing the experiments.
 
 > Scope: this repository assesses current water quality state from five physicochemical indicators.
-> The reference experiment data are cross-sectional and contain no timestamps.
-> Dataset files are private inputs and are not distributed with the repository.
+> The prepared experiment input is cross-sectional and contains no timestamp field.
+> This repository does not include the complete dataset, processed experiment
+> table, or experiment subsets. Download water-quality monitoring data from the
+> [Ministry of Environment's National Environmental Water Quality Monitoring Information Network](https://wq.moenv.gov.tw/EWQP/zh/ConService/DownLoad/HistoryData.aspx),
+> then prepare a compatible local CSV as described in
+> [Data Preparation](docs/data_preparation.md).
 
 It provides:
 
@@ -162,18 +166,17 @@ Experiments and statistics:
 - [Experiment Protocol](docs/experiment_protocol.md)
 - [Sample-Size Experiments](docs/sample-size-experiments.md)
 - [Missing-Indicator Experiments](docs/missing-indicator-robustness-experiments.md)
+- [Missing-Indicator Core Experiments](docs/missing-indicator-core-experiments.md)
 - [Statistical Analysis](docs/statistical-analysis.md)
 - [Statistics Output Guide](statistics/README.md)
 
-Archive:
-
-- [Legacy Benchmark Protocol](docs/original-benchmark-protocol.md)
-- [Missing-Indicator Core Experiments](docs/missing-indicator-core-experiments.md)
-
 ## Reproducibility
 
-The following workflows require compatible local CSV inputs. Dataset files are
-not included in a clone and paths must be configured before execution.
+The following workflows require compatible local CSV inputs. The complete
+dataset and preprocessed experiment subsets are not included in a clone;
+download source data from the official monitoring information network and
+prepare the inputs as described in [Data Preparation](docs/data_preparation.md)
+before configuring paths and running a workflow.
 
 Run:
 
@@ -182,16 +185,24 @@ pip install -e ".[dev]"
 python scripts/reproduce_results.py --config configs/experiment_config.yaml --output-dir results/verification_run
 ```
 
-If you use the local `WQI` conda environment and want to run the full experiment (all models including xgboost/lightgbm):
+To run the full experiment with all supported model families, including
+`xgboost` and `lightgbm`:
 
 ```bash
-conda activate WQI
-pip install -e ".[models]"
+pip install -e ".[dev,models]"
 python scripts/reproduce_results.py --config configs/experiment_config.yaml --output-dir results/verification_run
 ```
 
 The script refuses to overwrite an existing results directory unless
 `--overwrite` is passed explicitly.
+
+### Training-Data-Volume Sensitivity
+
+The sample-size experiment measures how training-data volume affects the six
+learned surrogate models. It uses locally prepared subsets of `1,000`,
+`5,000`, `10,000`, and `50,000` rows, with five stratified folds at each
+setting. See [Sample-Size Experiments](docs/sample-size-experiments.md) for the
+run commands and reported metrics.
 
 Run the missing-indicator core experiments:
 
@@ -241,12 +252,11 @@ python scripts/prepare_statistics_outputs.py \
   --bundle-dir results/package \
   --complete-input-gpu-dir results/complete_input_gpu \
   --output-dir statistics/outputs \
-  --update-production-model \
-  --archive-legacy-50000-artifacts
+  --update-production-model
 ```
 
-The `--update-production-model` flag name is retained for script compatibility.
-It updates local inference artifacts and the model artifact manifest.
+The `--update-production-model` flag updates local inference artifacts and the
+model artifact manifest.
 
 Result-table outputs are written to:
 
@@ -280,7 +290,7 @@ for each run unless replacement is intentional.
 
 ### Reproducibility Hyperparameters
 
-The table below describes the current reproducibility workflow. Archived exploratory scripts may use `GridSearchCV` and library defaults; see [docs/original-benchmark-protocol.md](docs/original-benchmark-protocol.md).
+The table below describes the current reproducibility workflow.
 
 | Model | Library | Preprocessing | Key Hyperparameters |
 | --- | --- | --- | --- |
@@ -296,15 +306,19 @@ Repeated validation uses stratified random splits over WQI5 categories with seed
 
 ## Project Structure
 
-- `data/`: ignored local datasets and subsets (not distributed)
+- `data/`: ignored locally prepared datasets and subsets (not committed)
 - `models/`: local inference manifest and artifact paths; model binaries are not committed
 - `src/`: API and reusable backend logic
 - `scripts/`: reproducibility runners
-- `archive/legacy_training/`: archived exploratory training scripts from the
-  older `src/training` layout
 - `configs/`: experiment settings
 - `tests/`: pytest suite
 
 ## License
 
-Apache License 2.0. See `LICENSE`.
+The Apache License 2.0 applies only to this repository's source code. See
+[`LICENSE`](LICENSE).
+
+It does not grant any rights to data used for training, validation, or
+experiments. The complete dataset and preprocessed experiment subsets are not
+distributed with this repository; obtain monitoring data from the official
+information network and comply with the applicable source terms.
