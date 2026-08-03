@@ -70,7 +70,8 @@ Key variables:
 - `API_HOST=0.0.0.0`
 - `API_PORT=8001`
 - `AUTO_PORT=false`
-- `DATASET_FILE=dataV1.csv` (local file under the ignored `data/` directory)
+- `DATASET_FILE=dataV1.csv` (expects `data/dataV1.csv`; place downloaded and
+  processed data in the ignored `data/` directory)
 
 ## Install
 
