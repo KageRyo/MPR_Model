@@ -40,11 +40,11 @@ Example request:
 
 ```json
 {
-  "DO": 7.2,
-  "BOD": 2.1,
+  "DO": 70,
+  "BOD": 2,
   "NH3N": 0.3,
-  "EC": 450,
-  "SS": 12,
+  "EC": 400,
+  "SS": 10,
   "model_type": "direct_wqi5"
 }
 ```
@@ -54,21 +54,24 @@ Example `curl`:
 ```bash
 curl -X POST http://localhost:8001/api/v2/assessment \
   -H "Content-Type: application/json" \
-  -d '{"DO":7.2,"BOD":2.1,"NH3N":0.3,"EC":450,"SS":12,"model_type":"direct_wqi5"}'
+  -d '{"DO":70,"BOD":2,"NH3N":0.3,"EC":400,"SS":10,"model_type":"direct_wqi5"}'
 ```
 
 Example response:
 
 ```json
 {
-  "score": 82.5,
+  "score": 75.685,
   "category": "Good",
   "rating_range": "70 < WQI5 ≤ 85",
   "model_type": "direct_wqi5",
-  "latency_ms": 12.4,
+  "latency_ms": 0.123,
   "assessment": {
-    "DO": "Good",
-    "BOD": "Fair"
+    "DO": "Fair",
+    "BOD": "Good",
+    "NH3N": "Fair",
+    "EC": "Good",
+    "SS": "Good"
   },
   "warnings": []
 }
