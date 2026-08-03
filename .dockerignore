@@ -1,0 +1,17 @@
+# Version-control and local development files
+.git/
+.github/
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+
+# Private datasets, generated outputs, and local model artifacts
+data/
+results/
+results_*/
+archive/
+statistics/outputs/
+*.pkl
+*.joblib
