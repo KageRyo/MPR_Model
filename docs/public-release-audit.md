@@ -11,7 +11,7 @@ This audit covers the repository refs and Git objects available in the local clo
 - Credentials, tokens, and private keys: not found by the automated scan of tracked files or the additional high-risk pattern scan across reachable history.
 - Private infrastructure details: not found. Localhost and loopback endpoints appear only in development configuration, examples, and tests; the remaining reviewed endpoints are public documentation or repository links.
 - Aggregate research outputs: present as expected. Summary tables, reports, and figures are within the allowed public artifact scope.
-- Historical author metadata: multiple commits use personal mailbox addresses instead of GitHub noreply addresses. The addresses are not reproduced in this document, but they are reachable from the repository history and require an owner decision before public release.
+- Historical author metadata: multiple commits use personal mailbox addresses instead of GitHub noreply addresses. The addresses are not reproduced in this document, but they are reachable from the repository history. The repository owner reviewed and accepted this metadata as intentional public author attribution; no history rewrite is planned.
 
 ## Checks performed
 
@@ -22,8 +22,6 @@ This audit covers the repository refs and Git objects available in the local clo
 - Ran `git fsck --full --no-reflogs --unreachable`. The clone contains dangling local objects, but they are not reachable from the repository refs and the additional scan found no high-risk pattern in their blobs.
 - Reviewed reachable blob sizes and paths. The largest tracked artifacts are aggregate PNG figures; no dataset or model binary was identified.
 
-## Required action before public release
+## Release decision
 
-The historical personal mailbox addresses should either be explicitly accepted as intended public author metadata or removed through a coordinated history rewrite. No history rewrite was performed because it changes commit SHAs and requires repository-owner approval. Until that decision is made, this repository should remain private and this audit issue should remain open.
-
-If a rewrite is approved, perform it from a fresh clone, update every affected ref, force-push only after coordination, and repeat this audit against the rewritten history.
+The repository owner reviewed and accepted the historical author metadata as intentional public author attribution. No history rewrite is planned. The remaining findings do not block the repository's public release on the basis of this audit.
