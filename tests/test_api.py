@@ -6,8 +6,8 @@ from pathlib import Path
 import httpx
 import pytest
 
-from src.api import app
-from src.wqi import categorize_score, direct_wqi5_score
+from wqsurrogatemodels.api import app
+from wqsurrogatemodels.wqi import categorize_score, direct_wqi5_score
 
 
 @pytest.fixture

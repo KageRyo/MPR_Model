@@ -42,8 +42,8 @@ from run_missing_indicator_experiments import (  # noqa: E402
     output_json,
     write_csv,
 )
-from src.settings import FEATURE_COLUMNS  # noqa: E402
-from src.wqi import categorize_score  # noqa: E402
+from wqsurrogatemodels.settings import FEATURE_COLUMNS  # noqa: E402
+from wqsurrogatemodels.wqi import categorize_score  # noqa: E402
 
 
 FULL_REFERENCE = "full_reference"
