@@ -75,13 +75,44 @@ Key variables:
 
 ## Install
 
+`uv` is the recommended tool for local Python development. It reads the
+project dependencies from `pyproject.toml` and manages the project virtual
+environment for you.
+
+For the API with the `direct_wqi5` baseline:
+
 ```bash
-pip install .
+uv sync
 ```
 
 For development and tests:
 
 ```bash
+uv sync --extra dev
+uv run pytest
+```
+
+To enable the full set of surrogate model libraries (`xgboost` and
+`lightgbm`) as well:
+
+```bash
+uv sync --extra dev --extra models
+```
+
+Run the backend through the project environment:
+
+```bash
+uv run python main.py
+```
+
+`uv sync` creates `.venv` automatically. If `uv` is adopted as the canonical
+development workflow, commit the generated `uv.lock` file so dependency
+resolution is reproducible across machines.
+
+`pip` remains supported for environments that do not use `uv`:
+
+```bash
+pip install .
 pip install -e ".[dev]"
 ```
 
@@ -89,7 +120,7 @@ Local or externally provided scikit-learn surrogate artifacts should be loaded
 with the compatible scikit-learn version used during export. See
 `models/production_model_manifest.json` for the expected local paths.
 
-To also enable the full set of surrogate models (`xgboost`, `lightgbm`):
+To also enable the full set of surrogate models with `pip`:
 
 ```bash
 pip install -e ".[dev,models]"
@@ -115,8 +146,11 @@ bundles and serialized model artifacts remain in ignored local directories.
 ## Run
 
 ```bash
-python main.py
+uv run python main.py
 ```
+
+If the project was installed with `pip` instead, run `python main.py` from the
+repository root.
 
 If `API_PORT` is already occupied, the default behavior is to fail fast with a clearer error message. For local development, you can opt in to automatic fallback ports:
 
