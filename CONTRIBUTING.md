@@ -4,6 +4,7 @@ Thank you for considering contributing to WQSurrogateModels, the FastAPI backend
 
 ## Contents
 - [Workflow](#workflow)
+- [Local Development](#local-development)
 - [How to Contribute](#how-to-contribute)
 - [Branch Naming](#branch-naming)
 - [Commit Messages](#commit-messages)
@@ -23,6 +24,17 @@ This project follows GitHub Flow with `main` as the primary branch.
 4. Open a Pull Request for review.
 5. Merge only after approval and passing checks.
 
+## Local Development
+
+The backend requires Python 3.10 or newer. `uv` is the recommended local development tool.
+
+```bash
+uv sync --extra dev
+uv run pytest
+```
+
+Use `uv sync --extra dev --extra models` when testing the optional XGBoost and LightGBM model libraries. The full-stack startup path is documented in [Full-Stack Local Run](docs/fullstack-local-run.md).
+
 ---
 
 ## How to Contribute
@@ -38,24 +50,18 @@ This project follows GitHub Flow with `main` as the primary branch.
 
 ## Branch Naming
 
-Use descriptive names prefixed by category:
-
-- `feature/…` for new features
-- `fix/…` for bug fixes
-- `docs/…` for documentation-only changes
-- `refactor/…` for refactoring
-- `test/…` for tests
+Use `feature/...` for features, documentation, metadata, or maintenance changes and `fix/...` for bug or security corrections.
 
 Examples:
 - `feature/add-model-validation`
+- `feature/update-api-docs`
 - `fix/csv-parsing-error`
-- `docs/update-readme`
 
 ---
 
 ## Commit Messages
 
-Follow the Conventional Commits specification:
+Follow the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/):
 
 ```
 type(scope): short description
