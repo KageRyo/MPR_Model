@@ -332,7 +332,7 @@ Repeated validation uses stratified random splits over WQI5 categories with seed
 
 - `data/`: ignored locally prepared datasets and subsets, excluded from the current repository tree
 - `models/`: local inference manifest and artifact paths; trained model binaries are not distributed through this repository or its releases
-- `src/`: API and reusable backend logic
+- `src/wqsurrogatemodels/`: installable API and reusable backend package
 - `scripts/`: reproducibility runners
 - `configs/`: experiment settings
 - `tests/`: pytest suite

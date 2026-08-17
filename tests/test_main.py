@@ -8,7 +8,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import main
-from src.settings import Settings, parse_bool_env
+from wqsurrogatemodels.settings import Settings, parse_bool_env
 
 
 def test_parse_bool_env_truthy(monkeypatch: pytest.MonkeyPatch):

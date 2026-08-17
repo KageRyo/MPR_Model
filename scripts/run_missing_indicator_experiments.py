@@ -31,8 +31,8 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from reproduce_results import build_model, require_model_support, resolve_compute_device  # noqa: E402
-from src.settings import FEATURE_COLUMNS  # noqa: E402
-from src.wqi import categorize_score  # noqa: E402
+from wqsurrogatemodels.settings import FEATURE_COLUMNS  # noqa: E402
+from wqsurrogatemodels.wqi import categorize_score  # noqa: E402
 
 
 CORE_FEATURES = ["DO", "EC", "SS"]

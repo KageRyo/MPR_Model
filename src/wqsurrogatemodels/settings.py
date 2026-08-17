@@ -20,7 +20,7 @@ def parse_bool_env(name: str, default: bool = False) -> bool:
 
 @dataclass(frozen=True)
 class Settings:
-    project_root: Path = Path(__file__).resolve().parents[1]
+    project_root: Path = Path(__file__).resolve().parents[2]
     data_dir: Path = project_root / "data"
     model_dir: Path = project_root / os.getenv("MODEL_DIR", "models")
     default_model: ModelTypeEnum = ModelTypeEnum(os.getenv("DEFAULT_MODEL", "direct_wqi5"))

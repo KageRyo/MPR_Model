@@ -44,7 +44,8 @@ models = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["src*"]
+where = ["src"]
+include = ["wqsurrogatemodels*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
