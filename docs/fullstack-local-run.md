@@ -91,9 +91,9 @@ must be on the same LAN. Keep `API_PORT` and the port in
 frontend/backend run unless you also update the frontend URL to the selected
 port.
 
-If Node.js is not installed locally, the existing [WaterMirror](https://github.com/KageRyo/WaterMirror)
-Dockerfile can
-run the Expo web frontend with Node 20:
+If Node.js is not installed locally, use the
+[WaterMirror Dockerfile](https://github.com/KageRyo/WaterMirror/blob/main/Dockerfile)
+to run the Expo web frontend with Node 20:
 
 ```bash
 cd WaterMirror
