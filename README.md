@@ -2,6 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-green.svg)](https://www.python.org)
+[![PyPI](https://img.shields.io/pypi/v/wqsurrogatemodels?logo=pypi&label=PyPI)](https://pypi.org/project/wqsurrogatemodels/)
 [![CI](https://github.com/KageRyo/WQSurrogateModels/actions/workflows/ci.yml/badge.svg)](https://github.com/KageRyo/WQSurrogateModels/actions/workflows/ci.yml)
 
 WQSurrogateModels is a FastAPI backend for WQI5-based water quality assessment. It provides a direct WQI5 formula baseline, surrogate regression models, API endpoints, and scripts for reproducing the experiments.
