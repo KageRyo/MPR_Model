@@ -184,6 +184,7 @@ User and API:
 - [Full-Stack Local Run](docs/fullstack-local-run.md)
 - [WaterMirror Integration](docs/watermirror-integration.md)
 - [PyPI Package Boundary](docs/pypi-package.md)
+- [PyPI Release Process](docs/pypi-release.md)
 
 Methodology:
 
