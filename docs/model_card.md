@@ -36,11 +36,7 @@ This repository does not perform temporal forecasting.
 
 ## Local Inference Artifacts
 
-Research datasets and trained model binaries are not distributed through this
-repository or its releases. The
-`models/production_model_manifest.json` file contains metadata and expected
-local paths only; it does not contain serialized model parameters or executable
-model binaries.
+Research datasets and trained model binaries are not distributed through this repository or its releases. See [Data Availability and Redistribution](data-availability.md) for the repository's distribution policy. The `models/production_model_manifest.json` file contains metadata and expected local paths only; it does not contain serialized model parameters or executable model binaries.
 
 The local inference artifacts are complete-input WQI5 surrogates:
 
