@@ -138,6 +138,14 @@ DO, BOD, NH3N, EC, SS
 They should not be interpreted as models for incomplete-input cases. Experiment
 bundles and serialized model artifacts remain in ignored local directories.
 
+## PyPI Package Scope
+
+The PyPI distribution contains the installable `wqsurrogatemodels` runtime
+package and project metadata only. Research datasets, serialized model binaries,
+generated results, experiment configurations, reproducibility scripts, and
+repository-only tests are excluded. See [PyPI Package Boundary](docs/pypi-package.md)
+for the complete inclusion policy.
+
 ## Run
 
 ```bash
@@ -175,6 +183,7 @@ User and API:
 - [API Reference](docs/api-reference.md)
 - [Full-Stack Local Run](docs/fullstack-local-run.md)
 - [WaterMirror Integration](docs/watermirror-integration.md)
+- [PyPI Package Boundary](docs/pypi-package.md)
 
 Methodology:
 
