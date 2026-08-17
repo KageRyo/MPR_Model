@@ -10,17 +10,17 @@ It provides:
 
 - a `direct_wqi5` baseline
 - surrogate regression models
-- `/api/v2/*` endpoints for WaterMirror and other HTTP clients
+- `/api/v2/*` endpoints for [WaterMirror](https://github.com/KageRyo/WaterMirror) and other HTTP clients
 - reproducibility scripts and experiment documentation
 
 ## Relationship with the Companion Repository
 
 This project is part of a two-repository system:
 
-- `WaterMirror`: cross-platform mobile frontend for data entry, CSV upload, and result visualization
+- [WaterMirror](https://github.com/KageRyo/WaterMirror): cross-platform mobile frontend for data entry, CSV upload, and result visualization
 - `WQSurrogateModels`: FastAPI backend and reproducibility repository for WQI5-based current-state water quality assessment
 
-WaterMirror depends on the API contract exposed by this repository. `WQSurrogateModels` can also be used independently through `curl`, Postman, or custom scripts.
+[WaterMirror](https://github.com/KageRyo/WaterMirror) depends on the API contract exposed by this repository. `WQSurrogateModels` can also be used independently through `curl`, Postman, or custom scripts.
 
 ## What This Repository Does
 
@@ -75,13 +75,39 @@ Key variables:
 
 ## Install
 
+`uv` is the recommended tool for local Python development. It reads the project dependencies from `pyproject.toml` and manages the project virtual environment for you.
+
+For the API with the `direct_wqi5` baseline:
+
 ```bash
-pip install .
+uv sync
 ```
 
 For development and tests:
 
 ```bash
+uv sync --extra dev
+uv run pytest
+```
+
+To enable the full set of surrogate model libraries (`xgboost` and `lightgbm`) as well:
+
+```bash
+uv sync --extra dev --extra models
+```
+
+Run the backend through the project environment:
+
+```bash
+uv run python main.py
+```
+
+`uv sync` creates `.venv` automatically. This repository commits `uv.lock` so dependency resolution is reproducible across machines. When dependencies change, update the lockfile with `uv lock` and commit it with the dependency change.
+
+`pip` remains supported for environments that do not use `uv`:
+
+```bash
+pip install .
 pip install -e ".[dev]"
 ```
 
@@ -89,7 +115,7 @@ Local or externally provided scikit-learn surrogate artifacts should be loaded
 with the compatible scikit-learn version used during export. See
 `models/production_model_manifest.json` for the expected local paths.
 
-To also enable the full set of surrogate models (`xgboost`, `lightgbm`):
+To also enable the full set of surrogate models with `pip`:
 
 ```bash
 pip install -e ".[dev,models]"
@@ -115,8 +141,10 @@ bundles and serialized model artifacts remain in ignored local directories.
 ## Run
 
 ```bash
-python main.py
+uv run python main.py
 ```
+
+If the project was installed with `pip` instead, run `python main.py` from the repository root.
 
 If `API_PORT` is already occupied, the default behavior is to fail fast with a clearer error message. For local development, you can opt in to automatic fallback ports:
 
