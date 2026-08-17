@@ -11,7 +11,7 @@
 
 ## Current Direct Baseline
 
-The direct baseline is implemented in [`src/wqi.py`](../src/wqi.py) as `direct_wqi5_score()`.
+The direct baseline is implemented in [`src/wqsurrogatemodels/wqi.py`](../src/wqsurrogatemodels/wqi.py) as `direct_wqi5_score()`.
 
 Each raw indicator is transformed into a sub-index value:
 

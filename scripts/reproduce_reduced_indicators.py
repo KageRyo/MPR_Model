@@ -30,8 +30,8 @@ from reproduce_results import (  # noqa: E402
     score_to_category,
     write_csv,
 )
-from src.settings import FEATURE_COLUMNS  # noqa: E402
-from src.wqi import categorize_score, direct_wqi5_score  # noqa: E402
+from wqsurrogatemodels.settings import FEATURE_COLUMNS  # noqa: E402
+from wqsurrogatemodels.wqi import categorize_score, direct_wqi5_score  # noqa: E402
 
 
 FULL_FEATURES = tuple(FEATURE_COLUMNS)
