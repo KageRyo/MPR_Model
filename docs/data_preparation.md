@@ -1,15 +1,6 @@
 # Data Preparation
 
-This repository does not distribute the complete source dataset, the processed
-experiment table, or experiment subsets. It provides a preprocessing contract
-for preparing schema-compatible local inputs; the study dataset itself is not
-distributed and cannot be reconstructed from this repository alone. Download
-water-quality monitoring data from the [Ministry of Environment's National Environmental Water Quality Monitoring Information Network](https://wq.moenv.gov.tw/EWQP/zh/ConService/DownLoad/HistoryData.aspx),
-then use the schema and preprocessing contract below to prepare a local input
-and save the resulting CSV in `data/`.
-These instructions do not guarantee the same rows or record counts as the study
-dataset. Data obtained from the source remain subject to the applicable source
-terms.
+This repository does not distribute the complete source dataset, the processed experiment table, or experiment subsets. See [Data Availability and Redistribution](data-availability.md) for the repository's distribution policy. It provides a preprocessing contract for preparing schema-compatible local inputs; the study dataset itself is not distributed and cannot be reconstructed from this repository alone. Download water-quality monitoring data from the [Ministry of Environment's National Environmental Water Quality Monitoring Information Network](https://wq.moenv.gov.tw/EWQP/zh/ConService/DownLoad/HistoryData.aspx), then use the schema and preprocessing contract below to prepare a local input and save the resulting CSV in `data/`. These instructions do not guarantee the same rows or record counts as the study dataset. Data obtained from the source remain subject to the applicable source terms.
 
 ## Reported Study Dataset Summary
 
