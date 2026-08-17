@@ -32,8 +32,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.settings import FEATURE_COLUMNS
-from src.wqi import categorize_score, direct_wqi5_score
+from wqsurrogatemodels.settings import FEATURE_COLUMNS
+from wqsurrogatemodels.wqi import categorize_score, direct_wqi5_score
 
 try:
     from lightgbm import LGBMRegressor

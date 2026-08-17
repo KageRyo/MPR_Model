@@ -60,7 +60,7 @@ jobs:
       - name: Quick smoke test inside Docker image
         run: |
           docker run --rm wqsurrogatemodels:ci-test python -c "
-          from src.wqi import direct_wqi5_score, categorize_score
+          from wqsurrogatemodels.wqi import direct_wqi5_score, categorize_score
           score = direct_wqi5_score(7.2, 2.1, 0.3, 450, 12)
           print('WQI5 score:', round(score, 1))
           cat, band = categorize_score(score)

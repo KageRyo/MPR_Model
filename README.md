@@ -138,6 +138,14 @@ DO, BOD, NH3N, EC, SS
 They should not be interpreted as models for incomplete-input cases. Experiment
 bundles and serialized model artifacts remain in ignored local directories.
 
+## PyPI Package Scope
+
+The PyPI distribution contains the installable `wqsurrogatemodels` runtime
+package and project metadata only. Research datasets, serialized model binaries,
+generated results, experiment configurations, reproducibility scripts, and
+repository-only tests are excluded. See [PyPI Package Boundary](docs/pypi-package.md)
+for the complete inclusion policy.
+
 ## Run
 
 ```bash
@@ -175,6 +183,8 @@ User and API:
 - [API Reference](docs/api-reference.md)
 - [Full-Stack Local Run](docs/fullstack-local-run.md)
 - [WaterMirror Integration](docs/watermirror-integration.md)
+- [PyPI Package Boundary](docs/pypi-package.md)
+- [PyPI Release Process](docs/pypi-release.md)
 
 Methodology:
 
@@ -332,7 +342,7 @@ Repeated validation uses stratified random splits over WQI5 categories with seed
 
 - `data/`: ignored locally prepared datasets and subsets, excluded from the current repository tree
 - `models/`: local inference manifest and artifact paths; trained model binaries are not distributed through this repository or its releases
-- `src/`: API and reusable backend logic
+- `src/wqsurrogatemodels/`: installable API and reusable backend package
 - `scripts/`: reproducibility runners
 - `configs/`: experiment settings
 - `tests/`: pytest suite

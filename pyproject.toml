@@ -1,16 +1,30 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "wqsurrogatemodels"
-version = "2.0.0"
+version = "2.1.0"
 description = "WQI5-based current-state water quality assessment backend for WaterMirror."
-readme = "README.md"
+readme = "README-PYPI.md"
 requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
   { name = "kageryo", email = "kageryo@coderyo.com" }
+]
+keywords = ["water quality", "WQI5", "FastAPI", "surrogate models"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Framework :: FastAPI",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering",
 ]
 dependencies = [
   "fastapi",
@@ -42,9 +56,22 @@ models = [
   "lightgbm",
   "xgboost",
 ]
+package = [
+  "build>=1.2",
+  "twine>=5.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/KageRyo/WQSurrogateModels"
+Repository = "https://github.com/KageRyo/WQSurrogateModels"
+Issues = "https://github.com/KageRyo/WQSurrogateModels/issues"
+
+[tool.setuptools]
+include-package-data = false
 
 [tool.setuptools.packages.find]
-include = ["src*"]
+where = ["src"]
+include = ["wqsurrogatemodels*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
