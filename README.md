@@ -10,17 +10,17 @@ It provides:
 
 - a `direct_wqi5` baseline
 - surrogate regression models
-- `/api/v2/*` endpoints for WaterMirror and other HTTP clients
+- `/api/v2/*` endpoints for [WaterMirror](https://github.com/KageRyo/WaterMirror) and other HTTP clients
 - reproducibility scripts and experiment documentation
 
 ## Relationship with the Companion Repository
 
 This project is part of a two-repository system:
 
-- `WaterMirror`: cross-platform mobile frontend for data entry, CSV upload, and result visualization
+- [WaterMirror](https://github.com/KageRyo/WaterMirror): cross-platform mobile frontend for data entry, CSV upload, and result visualization
 - `WQSurrogateModels`: FastAPI backend and reproducibility repository for WQI5-based current-state water quality assessment
 
-WaterMirror depends on the API contract exposed by this repository. `WQSurrogateModels` can also be used independently through `curl`, Postman, or custom scripts.
+[WaterMirror](https://github.com/KageRyo/WaterMirror) depends on the API contract exposed by this repository. `WQSurrogateModels` can also be used independently through `curl`, Postman, or custom scripts.
 
 ## What This Repository Does
 
@@ -105,9 +105,10 @@ Run the backend through the project environment:
 uv run python main.py
 ```
 
-`uv sync` creates `.venv` automatically. If `uv` is adopted as the canonical
-development workflow, commit the generated `uv.lock` file so dependency
-resolution is reproducible across machines.
+`uv sync` creates `.venv` automatically. This repository commits `uv.lock` so
+dependency resolution is reproducible across machines. When dependencies
+change, update the lockfile with `uv lock` and commit it with the dependency
+change.
 
 `pip` remains supported for environments that do not use `uv`:
 

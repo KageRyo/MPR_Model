@@ -1,12 +1,12 @@
 # Full-Stack Local Run
 
-This guide runs `WQSurrogateModels` and `WaterMirror` together on one machine.
+This guide runs `WQSurrogateModels` and [WaterMirror](https://github.com/KageRyo/WaterMirror) together on one machine.
 
 ## Prerequisites
 
 - Python 3.10 or newer
 - `uv` for the Python backend
-- Node.js 20 or newer and npm for the Expo frontend
+- Node.js >= 20.19 and npm for the Expo frontend
 
 ## 1. Start the backend
 
@@ -14,8 +14,16 @@ This guide runs `WQSurrogateModels` and `WaterMirror` together on one machine.
 cd WQSurrogateModels
 # Run this only when .env does not exist yet.
 test -f .env || cp .env.example .env
-uv sync --extra dev --extra models
+uv sync
 uv run python main.py
+```
+
+The default `direct_wqi5` model only needs the base backend dependencies. If
+you plan to select a surrogate model such as `xgboost` or `lightgbm` in
+[WaterMirror](https://github.com/KageRyo/WaterMirror), install the optional model libraries first:
+
+```bash
+uv sync --extra models
 ```
 
 For a local frontend/backend pair, keep these backend settings aligned with
@@ -40,7 +48,7 @@ http://localhost:8001
 curl http://localhost:8001/api/v2/health
 ```
 
-## 3. Configure WaterMirror
+## 3. Configure [WaterMirror](https://github.com/KageRyo/WaterMirror)
 
 In `WaterMirror/.env`:
 
@@ -58,8 +66,8 @@ npm ci
 npx expo start --web
 ```
 
-`uv` is used for the Python backend only. WaterMirror is an Expo/React Native
-application and uses Node.js/npm.
+`uv` is used for the Python backend only. [WaterMirror](https://github.com/KageRyo/WaterMirror)
+is an Expo/React Native application and uses Node.js/npm.
 
 ## 5. Test the flow
 
@@ -83,7 +91,8 @@ must be on the same LAN. Keep `API_PORT` and the port in
 frontend/backend run unless you also update the frontend URL to the selected
 port.
 
-If Node.js is not installed locally, the existing WaterMirror Dockerfile can
+If Node.js is not installed locally, the existing [WaterMirror](https://github.com/KageRyo/WaterMirror)
+Dockerfile can
 run the Expo web frontend with Node 20:
 
 ```bash
