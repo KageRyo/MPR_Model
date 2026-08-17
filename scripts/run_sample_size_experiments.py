@@ -26,8 +26,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.reproduce_results import build_model, nmae, require_model_support, rmse
-from src.settings import FEATURE_COLUMNS
-from src.wqi import categorize_score
+from wqsurrogatemodels.settings import FEATURE_COLUMNS
+from wqsurrogatemodels.wqi import categorize_score
 
 DEFAULT_DATASETS = [
     "data/dataV1_1000.csv",

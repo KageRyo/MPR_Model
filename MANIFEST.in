@@ -1,0 +1,20 @@
+include LICENSE
+include README-PYPI.md
+include pyproject.toml
+recursive-include src/wqsurrogatemodels *.py
+
+prune configs
+prune data
+prune docs
+prune models
+prune results
+prune scripts
+prune statistics
+prune tests
+prune src/wqsurrogatemodels.egg-info
+
+global-exclude *.csv
+global-exclude *.joblib
+global-exclude *.pkl
+global-exclude *.png
+global-exclude *.xlsx

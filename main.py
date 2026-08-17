@@ -4,8 +4,8 @@ import sys
 import uvicorn
 from loguru import logger
 
-from src.api import app
-from src.settings import Settings
+from wqsurrogatemodels.api import app
+from wqsurrogatemodels.settings import Settings
 
 
 def setup_logging() -> None:
