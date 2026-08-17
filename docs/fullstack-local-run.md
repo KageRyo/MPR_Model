@@ -18,16 +18,13 @@ uv sync
 uv run python main.py
 ```
 
-The default `direct_wqi5` model only needs the base backend dependencies. If
-you plan to select a surrogate model such as `xgboost` or `lightgbm` in
-[WaterMirror](https://github.com/KageRyo/WaterMirror), install the optional model libraries first:
+The default `direct_wqi5` model only needs the base backend dependencies. If you plan to select a surrogate model such as `xgboost` or `lightgbm` in [WaterMirror](https://github.com/KageRyo/WaterMirror), install the optional model libraries first:
 
 ```bash
 uv sync --extra models
 ```
 
-For a local frontend/backend pair, keep these backend settings aligned with
-the frontend URL:
+For a local frontend/backend pair, keep these backend settings aligned with the frontend URL:
 
 ```env
 API_HOST=0.0.0.0
@@ -66,8 +63,7 @@ npm ci
 npx expo start --web
 ```
 
-`uv` is used for the Python backend only. [WaterMirror](https://github.com/KageRyo/WaterMirror)
-is an Expo/React Native application and uses Node.js/npm.
+`uv` is used for the Python backend only. [WaterMirror](https://github.com/KageRyo/WaterMirror) is an Expo/React Native application and uses Node.js/npm.
 
 ## 5. Test the flow
 
@@ -85,15 +81,9 @@ If testing on a real phone, replace `localhost` in `WaterMirror/.env` with your 
 EXPO_PUBLIC_API_BASE_URL=http://<your-lan-ip>:8001
 ```
 
-The backend must listen on `0.0.0.0`, and the phone and development machine
-must be on the same LAN. Keep `API_PORT` and the port in
-`EXPO_PUBLIC_API_BASE_URL` the same; do not use `AUTO_PORT=true` for a paired
-frontend/backend run unless you also update the frontend URL to the selected
-port.
+The backend must listen on `0.0.0.0`, and the phone and development machine must be on the same LAN. Keep `API_PORT` and the port in `EXPO_PUBLIC_API_BASE_URL` the same; do not use `AUTO_PORT=true` for a paired frontend/backend run unless you also update the frontend URL to the selected port.
 
-If Node.js is not installed locally, use the
-[WaterMirror Dockerfile](https://github.com/KageRyo/WaterMirror/blob/main/Dockerfile)
-to run the Expo web frontend with Node 20:
+If Node.js is not installed locally, use the [WaterMirror Dockerfile](https://github.com/KageRyo/WaterMirror/blob/main/Dockerfile) to run the Expo web frontend with Node 20:
 
 ```bash
 cd WaterMirror

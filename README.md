@@ -75,9 +75,7 @@ Key variables:
 
 ## Install
 
-`uv` is the recommended tool for local Python development. It reads the
-project dependencies from `pyproject.toml` and manages the project virtual
-environment for you.
+`uv` is the recommended tool for local Python development. It reads the project dependencies from `pyproject.toml` and manages the project virtual environment for you.
 
 For the API with the `direct_wqi5` baseline:
 
@@ -92,8 +90,7 @@ uv sync --extra dev
 uv run pytest
 ```
 
-To enable the full set of surrogate model libraries (`xgboost` and
-`lightgbm`) as well:
+To enable the full set of surrogate model libraries (`xgboost` and `lightgbm`) as well:
 
 ```bash
 uv sync --extra dev --extra models
@@ -105,10 +102,7 @@ Run the backend through the project environment:
 uv run python main.py
 ```
 
-`uv sync` creates `.venv` automatically. This repository commits `uv.lock` so
-dependency resolution is reproducible across machines. When dependencies
-change, update the lockfile with `uv lock` and commit it with the dependency
-change.
+`uv sync` creates `.venv` automatically. This repository commits `uv.lock` so dependency resolution is reproducible across machines. When dependencies change, update the lockfile with `uv lock` and commit it with the dependency change.
 
 `pip` remains supported for environments that do not use `uv`:
 
@@ -150,8 +144,7 @@ bundles and serialized model artifacts remain in ignored local directories.
 uv run python main.py
 ```
 
-If the project was installed with `pip` instead, run `python main.py` from the
-repository root.
+If the project was installed with `pip` instead, run `python main.py` from the repository root.
 
 If `API_PORT` is already occupied, the default behavior is to fail fast with a clearer error message. For local development, you can opt in to automatic fallback ports:
 
