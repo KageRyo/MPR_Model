@@ -1,15 +1,14 @@
 # PyPI Release Process
 
-This workflow prepares the package release but does not publish while the
-repository is private. The repository owner must complete the public-release
-review and manually change the repository visibility before any PyPI release.
+This workflow builds and publishes the package through PyPI Trusted Publishing.
+It is available only while the repository is public.
 
 ## Required order
 
-1. Merge WQSurrogateModels #24, #25, and #26 in order.
-2. Confirm the public-release audit and repository policies are complete.
-3. Manually change the repository visibility to public.
-4. Configure the PyPI and TestPyPI Trusted Publishers for
+1. Confirm the public-release audit and repository policies are complete.
+2. Confirm `main` CI is green and the canonical package version in
+   `src/wqsurrogatemodels/version.py` has been updated.
+3. Configure the PyPI and TestPyPI Trusted Publishers for
    `KageRyo/WQSurrogateModels` and `.github/workflows/release.yml`:
 
    | Index | Package | Environment |
@@ -17,16 +16,16 @@ review and manually change the repository visibility before any PyPI release.
    | PyPI | `wqsurrogatemodels` | `pypi` |
    | TestPyPI | `wqsurrogatemodels` | `testpypi` |
 
-5. From `main`, run the workflow manually with the `testpypi` target and
+4. From `main`, run the workflow manually with the `testpypi` target and
    verify installation and the direct WQI5 smoke test.
-6. Create and publish a GitHub Release from `main` with:
+5. Create and publish a GitHub Release from `main` with:
 
-   - tag: `WQSurrogateModels-v2.1.0`
-   - release title: `WQSurrogateModels v2.1.0`
+   - tag: `WQSurrogateModels-v<package-version>`
+   - release title: `WQSurrogateModels v<package-version>`
 
    The published release triggers the production PyPI job. The workflow checks
-   the repository visibility, tag, release title, package version, tests, and
-   distribution contents before the upload.
+   the repository visibility, tag, release title, canonical package version,
+   tests, and distribution contents before the upload.
 
 ## Authentication and approval
 
