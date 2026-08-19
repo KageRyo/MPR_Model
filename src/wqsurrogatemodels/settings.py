@@ -23,6 +23,9 @@ class Settings:
     project_root: Path = Path(os.getenv("PROJECT_ROOT", str(Path.cwd()))).expanduser().resolve()
     data_dir: Path = project_root / "data"
     model_dir: Path = project_root / os.getenv("MODEL_DIR", "models")
+    production_manifest_path: Path = model_dir / os.getenv(
+        "PRODUCTION_MODEL_MANIFEST", "production_model_manifest.json"
+    )
     default_model: ModelTypeEnum = ModelTypeEnum(os.getenv("DEFAULT_MODEL", "direct_wqi5"))
     api_host: str = os.getenv("API_HOST", "0.0.0.0")
     api_port: int = int(os.getenv("API_PORT", "8001"))
