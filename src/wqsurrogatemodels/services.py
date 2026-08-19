@@ -209,6 +209,6 @@ class WaterQualityService:
         latency_ms = (time.perf_counter() - start) * 1000
         return {
             "scores": [round(float(value), 3) for value in predictions],
-            "model_type": str(model_name),   # Ensure string for WaterMirror compatibility
+            "model_type": model_name.value,
             "latency_ms": round(latency_ms, 3),
         }
