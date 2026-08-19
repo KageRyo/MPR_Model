@@ -57,13 +57,39 @@ jobs:
           cache-to: type=gha,mode=max
           load: true
 
-      - name: Quick smoke test inside Docker image
+      - name: Smoke test the Docker API runtime
         run: |
-          docker run --rm wqsurrogatemodels:ci-test python -c "
-          from wqsurrogatemodels.wqi import direct_wqi5_score, categorize_score
-          score = direct_wqi5_score(7.2, 2.1, 0.3, 450, 12)
-          print('WQI5 score:', round(score, 1))
-          cat, band = categorize_score(score)
-          print('Category:', cat)
-          print('Docker smoke test passed.')
-          "
+          container_name=wqsurrogatemodels-ci-smoke
+          docker run --detach --rm --name "$container_name" --publish 127.0.0.1:18001:8001 wqsurrogatemodels:ci-test
+          trap 'docker rm --force "$container_name" || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18001/api/v2/health; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:18001/api/v2/ready
+          curl --fail --silent --request POST http://127.0.0.1:18001/api/v2/assessment \
+            --header 'Content-Type: application/json' \
+            --data '{"DO":96.2,"BOD":1.5,"NH3N":0.22,"EC":171,"SS":2.6,"model_type":"direct_wqi5"}' \
+            | python -c 'import json, sys; payload = json.load(sys.stdin); assert payload["model_type"] == "direct_wqi5"; assert 0 <= payload["score"] <= 100'
+
+  runtime-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Verify locked project environment
+        run: |
+          uv lock --check
+          uv sync --locked --extra dev
+
+      - name: Smoke test local API runtime
+        run: uv run python scripts/smoke_api.py
