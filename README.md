@@ -197,6 +197,7 @@ User and API:
 - [API Reference](docs/api-reference.md)
 - [Data Availability](docs/data-availability.md)
 - [Full-Stack Local Run](docs/fullstack-local-run.md)
+- [Production Backend Deployment](docs/production-backend-deployment.md)
 - [WaterMirror Integration](docs/watermirror-integration.md)
 - [PyPI Package Boundary](docs/pypi-package.md)
 - [PyPI Release Process](docs/pypi-release.md)
