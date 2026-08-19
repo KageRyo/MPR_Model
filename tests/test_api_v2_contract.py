@@ -75,6 +75,7 @@ async def test_v2_health_and_ready_contract(client: httpx.AsyncClient) -> None:
         "status": "ok",
         "message": "WQSurrogateModels v2 is healthy.",
         "default_model": "direct_wqi5",
+        "version": "2.1.0",
     }
     assert ready.status_code == 200
     ready_payload = ready.json()
@@ -105,8 +106,10 @@ async def test_v2_models_contract(client: httpx.AsyncClient) -> None:
     assert direct_model == {
         "model_type": "direct_wqi5",
         "available": True,
-        "artifact_path": None,
+        "version": "direct-wqi5-v1",
     }
+    assert all(set(model) == {"model_type", "available", "version"} for model in payload["models"])
+    assert "/" not in str(payload["models"])
 
 
 @pytest.mark.anyio
