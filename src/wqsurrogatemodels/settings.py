@@ -31,6 +31,7 @@ class Settings:
     api_port: int = int(os.getenv("API_PORT", "8001"))
     auto_port: bool = parse_bool_env("AUTO_PORT", default=False)
     dataset_path: Path = data_dir / os.getenv("DATASET_FILE", "dataV1.csv")
+    require_dataset_for_readiness: bool = parse_bool_env("REQUIRE_DATASET_FOR_READINESS", default=False)
     preferred_artifact_size: str = os.getenv("MODEL_ARTIFACT_SIZE", "50000")
     request_timeout_ms: int = int(os.getenv("REQUEST_TIMEOUT_MS", "10000"))
 
