@@ -12,6 +12,10 @@ New clients should use `/api/v2/*`.
 
 Checks service availability.
 
+The response includes a `version` field sourced from the same canonical package
+version used by the API metadata and distribution. It also reports the selected
+`default_model`.
+
 Example:
 
 ```bash
@@ -30,7 +34,10 @@ filesystem paths.
 
 ### `GET /api/v2/models`
 
-Returns the supported `model_type` values.
+Returns each supported `model_type` with its safe runtime metadata:
+`available` and the model `version` when known. The direct WQI5 baseline is
+always available. Local artifact paths, checksums, and other filesystem details
+are never included in this client response.
 
 ### `GET /api/v2/categories`
 

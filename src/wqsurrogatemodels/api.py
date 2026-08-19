@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
 from contextlib import asynccontextmanager
 
@@ -19,6 +18,7 @@ from .schemas import (
     ReadinessResponseSchema,
 )
 from .services import RuntimeConfigurationError, WaterQualityService
+from .version import __version__
 from .errors import ApplicationError, ErrorCode
 from .observability import (
     REQUEST_ID_HEADER,
@@ -44,7 +44,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="WQSurrogateModels API",
-    version="2.1.0",
+    version=__version__,
     description=(
         "WQI5-based current-state water quality assessment backend. "
         "Supports a direct WQI5 baseline and surrogate regression models.\n\n"
@@ -55,10 +55,9 @@ app = FastAPI(
 )
 
 # CORS configuration for WaterMirror frontend
-cors_origins = os.getenv("CORS_ALLOW_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in cors_origins if origin.strip()],
+    allow_origins=service.settings.cors_allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -139,6 +138,7 @@ async def read_root() -> HealthResponseSchema:
         status="ok",
         message="WQSurrogateModels assessment backend is reachable.",
         default_model=service.settings.default_model,
+        version=__version__,
     )
 
 
@@ -153,6 +153,7 @@ async def health_v2() -> HealthResponseSchema:
         status="ok",
         message="WQSurrogateModels v2 is healthy.",
         default_model=service.settings.default_model,
+        version=__version__,
     )
 
 
@@ -220,6 +221,7 @@ async def status() -> HealthResponseSchema:
         status="ok",
         message="Service healthy. (deprecated endpoint)",
         default_model=service.settings.default_model,
+        version=__version__,
     )
 
 

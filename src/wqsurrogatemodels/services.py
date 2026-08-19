@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import io
 import time
-from dataclasses import dataclass
 from pathlib import Path
 
 import joblib
@@ -26,16 +25,9 @@ class RuntimeConfigurationError(ValueError):
     """Raised when a required runtime dependency cannot serve assessments safely."""
 
 
-@dataclass
-class ModelMetadata:
-    model_type: ModelTypeEnum
-    available: bool
-    artifact_path: str | None
-
-
 class WaterQualityService:
     def __init__(self, settings: Settings | None = None) -> None:
-        self.settings = settings or Settings()
+        self.settings = settings or Settings.from_environment()
         self._dataset: pd.DataFrame | None = None
         self._scores: pd.Series | None = None
         self._models: dict[str, object] = {}
@@ -207,19 +199,21 @@ class WaterQualityService:
             {
                 "model_type": ModelTypeEnum.DIRECT_WQI5,
                 "available": True,
-                "artifact_path": None,
+                "version": "direct-wqi5-v1",
             },
         ]
         for model_type in MODEL_DIR_NAMES:
             try:
                 artifact = self._pick_artifact(model_type)
+                version = self.production_manifest.artifact_for(model_type).version
             except ArtifactValidationError:
                 artifact = None
+                version = None
             models.append(
                 {
                     "model_type": model_type,
                     "available": artifact is not None,
-                    "artifact_path": str(artifact.relative_to(self.settings.project_root)) if artifact else None,
+                    "version": version,
                 }
             )
         return models
