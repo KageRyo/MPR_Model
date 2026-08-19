@@ -57,6 +57,21 @@ async def health_v2() -> HealthResponseSchema:
     )
 
 
+@app.get("/api/v2/ready", response_model=HealthResponseSchema, tags=["v2"])
+async def ready_v2() -> HealthResponseSchema:
+    """Report the currently available basic readiness contract.
+
+    The v2 endpoint is intentionally separate from process health so clients can
+    depend on a stable readiness URL. Runtime dependency validation is added in
+    the service layer without requiring WaterMirror to change this route.
+    """
+    return HealthResponseSchema(
+        status="ready",
+        message="WQSurrogateModels v2 is ready to serve assessments.",
+        default_model=service.settings.default_model,
+    )
+
+
 @app.get("/api/v2/models", tags=["v2"])
 async def list_models_v2() -> dict:
     return {"models": service.list_models(), "default_model": service.settings.default_model}
