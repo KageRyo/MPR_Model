@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, Form, Request, Response, UploadFile
@@ -19,6 +20,13 @@ from .schemas import (
 )
 from .services import RuntimeConfigurationError, WaterQualityService
 from .errors import ApplicationError, ErrorCode
+from .observability import (
+    REQUEST_ID_HEADER,
+    bind_request_id,
+    log_event,
+    reset_request_id,
+    route_template,
+)
 
 service = WaterQualityService()
 logger = logging.getLogger(__name__)
@@ -57,6 +65,28 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def request_observability(request: Request, call_next):
+    request_id, token = bind_request_id()
+    start = time.perf_counter()
+    response: Response | None = None
+    try:
+        response = await call_next(request)
+        response.headers[REQUEST_ID_HEADER] = request_id
+        return response
+    finally:
+        latency_ms = round((time.perf_counter() - start) * 1000, 3)
+        log_event(
+            "api_request",
+            method=request.method,
+            route=route_template(request),
+            status_code=response.status_code if response is not None else 500,
+            latency_ms=latency_ms,
+            model_type=getattr(request.state, "model_type", None),
+        )
+        reset_request_id(token)
+
+
 def error_response(status_code: int, code: ErrorCode, message: str) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
@@ -64,20 +94,31 @@ def error_response(status_code: int, code: ErrorCode, message: str) -> JSONRespo
     )
 
 
+def log_api_error(request: Request, status_code: int, code: ErrorCode) -> None:
+    log_event(
+        "api_error",
+        method=request.method,
+        route=route_template(request),
+        status_code=status_code,
+        error_code=code.value,
+    )
+
+
 @app.exception_handler(ApplicationError)
-async def application_error_handler(_: Request, exc: ApplicationError) -> JSONResponse:
+async def application_error_handler(request: Request, exc: ApplicationError) -> JSONResponse:
+    log_api_error(request, exc.status_code, exc.code)
     return error_response(exc.status_code, exc.code, exc.message)
 
 
 @app.exception_handler(RuntimeConfigurationError)
-async def runtime_configuration_error_handler(_: Request, exc: RuntimeConfigurationError) -> JSONResponse:
-    logger.error("Runtime configuration error: %s", exc)
+async def runtime_configuration_error_handler(request: Request, exc: RuntimeConfigurationError) -> JSONResponse:
+    log_api_error(request, 503, ErrorCode.INVALID_CONFIGURATION)
     return error_response(503, ErrorCode.INVALID_CONFIGURATION, "The backend configuration is invalid.")
 
 
 @app.exception_handler(RequestValidationError)
-async def request_validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
-    logger.info("Request validation failed: %s errors", len(exc.errors()))
+async def request_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    log_api_error(request, 422, ErrorCode.INVALID_ASSESSMENT_INPUT)
     return error_response(
         422,
         ErrorCode.INVALID_ASSESSMENT_INPUT,
@@ -86,7 +127,8 @@ async def request_validation_error_handler(_: Request, exc: RequestValidationErr
 
 
 @app.exception_handler(Exception)
-async def unhandled_error_handler(_: Request, exc: Exception) -> JSONResponse:
+async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    log_api_error(request, 500, ErrorCode.INTERNAL_ERROR)
     logger.exception("Unhandled application error", exc_info=exc)
     return error_response(500, ErrorCode.INTERNAL_ERROR, "An unexpected server error occurred.")
 
@@ -139,23 +181,28 @@ async def categories_v2() -> dict:
 
 
 @app.post("/api/v2/assessment", response_model=AssessmentResponseSchema, tags=["v2"])
-async def assess(request: AssessmentRequestSchema) -> AssessmentResponseSchema:
-    return service.assess_single(request)
+async def assess(payload: AssessmentRequestSchema, request: Request) -> AssessmentResponseSchema:
+    request.state.model_type = payload.model_type.value
+    return service.assess_single(payload)
 
 
 @app.post("/api/v2/assessment/csv/summary", response_model=AssessmentResponseSchema, tags=["v2"])
 async def assess_csv_summary(
+    request: Request,
     file: UploadFile = File(...),
     model_type: ModelTypeEnum | None = Form(default=None),
 ) -> AssessmentResponseSchema:
+    request.state.model_type = (model_type or service.settings.default_model).value
     return service.assess_csv_summary(file, model_type=model_type)
 
 
 @app.post("/api/v2/assessment/csv/rows", tags=["v2"])
 async def assess_csv_rows(
+    request: Request,
     file: UploadFile = File(...),
     model_type: ModelTypeEnum | None = Form(default=None),
 ) -> dict:
+    request.state.model_type = (model_type or service.settings.default_model).value
     return service.assess_csv_rows(file, model_type=model_type)
 
 
@@ -195,24 +242,29 @@ async def categories() -> dict:
 
 
 @app.post("/predict", response_model=AssessmentResponseSchema, deprecated=True)
-async def predict(request: AssessmentRequestSchema) -> AssessmentResponseSchema:
+async def predict(payload: AssessmentRequestSchema, request: Request) -> AssessmentResponseSchema:
     """Deprecated: Use POST /api/v2/assessment instead."""
-    return service.assess_single(request)
+    request.state.model_type = payload.model_type.value
+    return service.assess_single(payload)
 
 
 @app.post("/score/total/", response_model=AssessmentResponseSchema, deprecated=True)
 async def predict_total(
+    request: Request,
     file: UploadFile = File(...),
     model_type: ModelTypeEnum | None = Form(default=None),
 ) -> AssessmentResponseSchema:
     """Deprecated: Use POST /api/v2/assessment/csv/summary instead."""
+    request.state.model_type = (model_type or service.settings.default_model).value
     return service.assess_csv_summary(file, model_type=model_type)
 
 
 @app.post("/score/all/", deprecated=True)
 async def predict_all(
+    request: Request,
     file: UploadFile = File(...),
     model_type: ModelTypeEnum | None = Form(default=None),
 ) -> dict:
     """Deprecated: Use POST /api/v2/assessment/csv/rows instead."""
+    request.state.model_type = (model_type or service.settings.default_model).value
     return service.assess_csv_rows(file, model_type=model_type)

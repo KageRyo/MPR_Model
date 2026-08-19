@@ -127,6 +127,15 @@ also uses this shape with status `422` and `invalid_assessment_input`; field
 details remain available in server-side diagnostics rather than being exposed
 to frontend users.
 
+## Request IDs and Structured Logs
+
+Every request receives an `X-Request-ID` response header. Include this value in
+support reports so it can be matched with the backend's JSON stdout logs. The
+request logs contain only bounded diagnostic fields: timestamp, request ID,
+method, route, status, latency, selected model type where applicable, and an
+error code for failures. Uploaded CSV contents and raw assessment measurements
+are never logged.
+
 ## Model Types
 
 Supported `model_type` values:
