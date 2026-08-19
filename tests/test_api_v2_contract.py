@@ -77,11 +77,20 @@ async def test_v2_health_and_ready_contract(client: httpx.AsyncClient) -> None:
         "default_model": "direct_wqi5",
     }
     assert ready.status_code == 200
-    assert ready.json() == {
-        "status": "ready",
-        "message": "WQSurrogateModels v2 is ready to serve assessments.",
-        "default_model": "direct_wqi5",
+    ready_payload = ready.json()
+    assert set(ready_payload) == {
+        "status",
+        "message",
+        "default_model",
+        "dataset_available",
+        "dataset_required",
+        "models",
     }
+    assert ready_payload["status"] == "ready"
+    assert ready_payload["message"] == "WQSurrogateModels v2 is ready to serve assessments."
+    assert ready_payload["default_model"] == "direct_wqi5"
+    assert ready_payload["dataset_required"] is False
+    assert ready_payload["models"][0] == {"model_type": "direct_wqi5", "available": True}
 
 
 @pytest.mark.anyio
