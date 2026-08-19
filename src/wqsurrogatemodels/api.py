@@ -1,15 +1,33 @@
 from __future__ import annotations
 
+import logging
 import os
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from .enums import ModelTypeEnum
-from .schemas import AssessmentRequestSchema, AssessmentResponseSchema, HealthResponseSchema
-from .services import WaterQualityService
+from .schemas import (
+    AssessmentRequestSchema,
+    AssessmentResponseSchema,
+    HealthResponseSchema,
+    ReadinessResponseSchema,
+)
+from .services import RuntimeConfigurationError, WaterQualityService
 
 service = WaterQualityService()
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    try:
+        service.validate_startup()
+    except RuntimeConfigurationError:
+        logger.exception("WQSurrogateModels runtime validation failed during startup")
+        raise
+    yield
 
 
 app = FastAPI(
@@ -21,6 +39,7 @@ app = FastAPI(
         "Primary contract is under /api/v2/* . Legacy endpoints at root level are "
         "retained for backward compatibility with WaterMirror and are marked deprecated."
     ),
+    lifespan=lifespan,
 )
 
 # CORS configuration for WaterMirror frontend
@@ -57,19 +76,13 @@ async def health_v2() -> HealthResponseSchema:
     )
 
 
-@app.get("/api/v2/ready", response_model=HealthResponseSchema, tags=["v2"])
-async def ready_v2() -> HealthResponseSchema:
-    """Report the currently available basic readiness contract.
-
-    The v2 endpoint is intentionally separate from process health so clients can
-    depend on a stable readiness URL. Runtime dependency validation is added in
-    the service layer without requiring WaterMirror to change this route.
-    """
-    return HealthResponseSchema(
-        status="ready",
-        message="WQSurrogateModels v2 is ready to serve assessments.",
-        default_model=service.settings.default_model,
-    )
+@app.get("/api/v2/ready", response_model=ReadinessResponseSchema, tags=["v2"])
+async def ready_v2(response: Response) -> ReadinessResponseSchema:
+    """Report assessment dependency status separately from process health."""
+    readiness = ReadinessResponseSchema(**service.readiness())
+    if readiness.status == "not_ready":
+        response.status_code = 503
+    return readiness
 
 
 @app.get("/api/v2/models", tags=["v2"])

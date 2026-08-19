@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from .enums import ModelTypeEnum
@@ -28,3 +30,17 @@ class HealthResponseSchema(BaseModel):
     status: str
     message: str
     default_model: ModelTypeEnum
+
+
+class ModelAvailabilitySchema(BaseModel):
+    model_type: ModelTypeEnum
+    available: bool
+
+
+class ReadinessResponseSchema(BaseModel):
+    status: Literal["ready", "not_ready"]
+    message: str
+    default_model: ModelTypeEnum
+    dataset_available: bool
+    dataset_required: bool
+    models: list[ModelAvailabilitySchema]

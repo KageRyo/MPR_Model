@@ -21,6 +21,10 @@ from .settings import FEATURE_COLUMNS, MODEL_DIR_NAMES, Settings
 from .wqi import assess_indicator_quality, categorize_score, direct_wqi5_score
 
 
+class RuntimeConfigurationError(ValueError):
+    """Raised when a required runtime dependency cannot serve assessments safely."""
+
+
 @dataclass
 class ModelMetadata:
     model_type: ModelTypeEnum
@@ -38,6 +42,96 @@ class WaterQualityService:
 
     def preload(self) -> None:
         _ = self.dataset
+
+    def _dataset_is_available(self) -> bool:
+        try:
+            columns = pd.read_csv(self.settings.dataset_path, nrows=0).columns
+        except (FileNotFoundError, OSError, pd.errors.ParserError):
+            return False
+        return "Score" in columns
+
+    def _validate_default_model(self) -> ModelTypeEnum:
+        default_model = self.settings.default_model
+        if not isinstance(default_model, ModelTypeEnum):
+            supported = ", ".join(model.value for model in ModelTypeEnum)
+            raise RuntimeConfigurationError(f"DEFAULT_MODEL must be one of: {supported}.")
+        return default_model
+
+    def _startup_errors(self) -> list[str]:
+        errors: list[str] = []
+        if not self.settings.project_root.is_dir():
+            errors.append("PROJECT_ROOT must be an existing directory.")
+
+        try:
+            default_model = self._validate_default_model()
+        except RuntimeConfigurationError as exc:
+            errors.append(str(exc))
+            return errors
+
+        if self.settings.model_dir.exists() and not self.settings.model_dir.is_dir():
+            errors.append("MODEL_DIR must be a directory when it exists.")
+        if default_model != ModelTypeEnum.DIRECT_WQI5 and not self.settings.model_dir.is_dir():
+            errors.append("MODEL_DIR is required when a surrogate model is the default.")
+
+        manifest_error: ArtifactValidationError | None = None
+        if self.settings.production_manifest_path.exists():
+            try:
+                _ = self.production_manifest
+            except ArtifactValidationError as exc:
+                manifest_error = exc
+        elif default_model != ModelTypeEnum.DIRECT_WQI5:
+            manifest_error = ArtifactValidationError("Production model manifest is missing.")
+        if manifest_error is not None:
+            errors.append(str(manifest_error))
+
+        if manifest_error is None and default_model != ModelTypeEnum.DIRECT_WQI5:
+            try:
+                _ = self._pick_artifact(default_model)
+            except ArtifactValidationError as exc:
+                errors.append(str(exc))
+
+        if self.settings.require_dataset_for_readiness and not self._dataset_is_available():
+            errors.append("Configured dataset is unavailable or does not contain the Score column.")
+        return errors
+
+    def validate_startup(self) -> None:
+        """Fail startup only for dependencies configured as required."""
+        errors = self._startup_errors()
+        if errors:
+            raise RuntimeConfigurationError(" ".join(errors))
+
+    def model_availability(self) -> list[dict]:
+        availability = [
+            {
+                "model_type": ModelTypeEnum.DIRECT_WQI5,
+                "available": True,
+            }
+        ]
+        for model_type in MODEL_DIR_NAMES:
+            try:
+                _ = self._pick_artifact(model_type)
+                available = True
+            except ArtifactValidationError:
+                available = False
+            availability.append({"model_type": model_type, "available": available})
+        return availability
+
+    def readiness(self) -> dict:
+        """Return safe dependency status without exposing local filesystem details."""
+        errors = self._startup_errors()
+        is_ready = not errors
+        return {
+            "status": "ready" if is_ready else "not_ready",
+            "message": (
+                "WQSurrogateModels v2 is ready to serve assessments."
+                if is_ready
+                else "WQSurrogateModels v2 is not ready: " + " ".join(errors)
+            ),
+            "default_model": self.settings.default_model,
+            "dataset_available": self._dataset_is_available(),
+            "dataset_required": self.settings.require_dataset_for_readiness,
+            "models": self.model_availability(),
+        }
 
     @property
     def dataset(self) -> pd.DataFrame:
