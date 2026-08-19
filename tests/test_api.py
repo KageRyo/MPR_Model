@@ -108,6 +108,9 @@ def test_production_model_manifest_lists_current_artifacts():
     artifacts = {artifact["model_type"]: artifact for artifact in manifest["artifacts"]}
     assert set(artifacts) == {"lightgbm", "lr", "mpr", "rf", "svm", "xgboost"}
     assert artifacts["xgboost"]["production_artifact"] == "models/XGBoost/modelXGBVer.2.0-50000-seed2.pkl"
+    assert artifacts["xgboost"]["sha256"] == "463d2f880382f0a1e4ab7b936796c095d643a581d141d96ae5c7c08871686785"
+    assert manifest["manifest_version"] == 1
+    assert manifest["required_feature_columns"] == ["DO", "BOD", "NH3N", "EC", "SS"]
     assert manifest["api_contract"] == "complete-input WQI5 surrogate; required features are DO, BOD, NH3N, EC, SS"
 
 
