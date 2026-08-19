@@ -9,6 +9,12 @@ import joblib
 import pandas as pd
 from fastapi import HTTPException, UploadFile
 
+from .artifacts import (
+    ArtifactValidationError,
+    ProductionModelManifest,
+    load_production_manifest,
+    validate_artifact,
+)
 from .enums import ModelTypeEnum
 from .schemas import AssessmentRequestSchema, AssessmentResponseSchema
 from .settings import FEATURE_COLUMNS, MODEL_DIR_NAMES, Settings
@@ -28,6 +34,7 @@ class WaterQualityService:
         self._dataset: pd.DataFrame | None = None
         self._scores: pd.Series | None = None
         self._models: dict[str, object] = {}
+        self._production_manifest: ProductionModelManifest | None = None
 
     def preload(self) -> None:
         _ = self.dataset
@@ -58,29 +65,26 @@ class WaterQualityService:
                 warnings.append(f"{key}={value} is outside the recommended range [{lower}, {upper}].")
         return warnings
 
-    def _artifact_candidates(self, model_type: ModelType) -> list[Path]:
-        directory_name = MODEL_DIR_NAMES[model_type]
-        directory = self.settings.model_dir / directory_name
-        if not directory.exists():
-            return []
-        return sorted(directory.glob("*.pkl"))
+    @property
+    def production_manifest(self) -> ProductionModelManifest:
+        if self._production_manifest is None:
+            self._production_manifest = load_production_manifest(self.settings.production_manifest_path)
+        return self._production_manifest
 
-    def _pick_artifact(self, model_type: ModelType) -> Path | None:
-        candidates = self._artifact_candidates(model_type)
-        if not candidates:
-            return None
-        preferred = [path for path in candidates if self.settings.preferred_artifact_size in path.name]
-        if preferred:
-            return preferred[-1]
-        return candidates[-1]
+    def _pick_artifact(self, model_type: ModelTypeEnum) -> Path:
+        return validate_artifact(
+            self.settings.project_root,
+            self.production_manifest.artifact_for(model_type),
+        )
 
-    def _load_model(self, model_type: ModelType):
+    def _load_model(self, model_type: ModelTypeEnum):
         if model_type not in MODEL_DIR_NAMES:
             raise HTTPException(status_code=400, detail=f"Unsupported model_type: {model_type}")
         if model_type not in self._models:
-            artifact = self._pick_artifact(model_type)
-            if artifact is None:
-                raise HTTPException(status_code=503, detail=f"No model artifact available for {model_type}")
+            try:
+                artifact = self._pick_artifact(model_type)
+            except ArtifactValidationError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
             self._models[model_type] = joblib.load(artifact)
         return self._models[model_type]
 
@@ -93,7 +97,10 @@ class WaterQualityService:
             },
         ]
         for model_type in MODEL_DIR_NAMES:
-            artifact = self._pick_artifact(model_type)
+            try:
+                artifact = self._pick_artifact(model_type)
+            except ArtifactValidationError:
+                artifact = None
             models.append(
                 {
                     "model_type": model_type,

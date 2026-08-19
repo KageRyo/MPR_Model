@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -175,11 +176,43 @@ def safe_surrogate_artifact(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     """Install a temporary serialised test model without production artifacts."""
     model_directory = tmp_path / "models" / "LR"
     model_directory.mkdir(parents=True)
-    joblib.dump(ConstantSurrogate(), model_directory / "test-lr.pkl")
+    artifact_path = model_directory / "test-lr.pkl"
+    joblib.dump(ConstantSurrogate(), artifact_path)
+    manifest_path = tmp_path / "models" / "production_model_manifest.json"
+    artifacts = []
+    for model_type in ModelTypeEnum:
+        if model_type == ModelTypeEnum.DIRECT_WQI5:
+            continue
+        relative_path = "models/LR/test-lr.pkl" if model_type == ModelTypeEnum.LR else f"models/{model_type.value}.pkl"
+        sha256 = hashlib.sha256(artifact_path.read_bytes()).hexdigest() if model_type == ModelTypeEnum.LR else "0" * 64
+        artifacts.append(
+            {
+                "model_type": model_type.value,
+                "version": "test-1",
+                "production_artifact": relative_path,
+                "sha256": sha256,
+                "training_seed": 0,
+                "feature_columns": ["DO", "BOD", "NH3N", "EC", "SS"],
+                "evaluation": {"source": "test", "experiment": "contract"},
+                "runtime_compatibility": {"scikit_learn": "1.5.2"},
+                "metrics": {"mae": 0.0},
+            }
+        )
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "manifest_version": 1,
+                "required_feature_columns": ["DO", "BOD", "NH3N", "EC", "SS"],
+                "artifacts": artifacts,
+            }
+        ),
+        encoding="utf-8",
+    )
     service = WaterQualityService(
         Settings(
             project_root=tmp_path,
             model_dir=tmp_path / "models",
+            production_manifest_path=manifest_path,
             default_model=ModelTypeEnum.DIRECT_WQI5,
         )
     )
