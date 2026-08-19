@@ -18,6 +18,11 @@ Example:
 curl http://localhost:8001/api/v2/health
 ```
 
+### `GET /api/v2/ready`
+
+Checks whether the service is ready to accept assessments. Clients should use
+this endpoint for readiness checks and reserve `/health` for process reachability.
+
 ### `GET /api/v2/models`
 
 Returns the supported `model_type` values.
@@ -87,9 +92,15 @@ Expected CSV header:
 DO,BOD,NH3N,EC,SS
 ```
 
+The optional multipart form field `model_type` uses one of the documented model
+type values. If omitted, the configured backend default is used.
+
 ### `POST /api/v2/assessment/csv/rows`
 
 Accepts a CSV upload and returns per-row results.
+
+The response contains `scores` (one value per CSV row), `model_type`, and
+`latency_ms`.
 
 ## Model Types
 
