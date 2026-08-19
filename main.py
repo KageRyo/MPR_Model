@@ -60,7 +60,7 @@ def resolve_port(settings: Settings, max_attempts: int = 100) -> int:
 
 def main():
     setup_logging()
-    settings = Settings()
+    settings = Settings.from_environment()
     port = resolve_port(settings)
     logger.info(f"Starting WQSurrogateModels API on {settings.api_host}:{port}")
     uvicorn.run(app, host=settings.api_host, port=port)

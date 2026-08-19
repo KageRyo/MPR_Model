@@ -30,6 +30,7 @@ class HealthResponseSchema(BaseModel):
     status: str
     message: str
     default_model: ModelTypeEnum
+    version: str
 
 
 class ModelAvailabilitySchema(BaseModel):
