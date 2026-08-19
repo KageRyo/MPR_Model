@@ -130,7 +130,10 @@ data-access terms.
 
 `models/production_model_manifest.json` contains metadata and expected local
 paths only; it does not contain serialized model parameters or executable model
-binaries. Locally generated surrogate artifacts require:
+binaries. Each selected artifact has a SHA-256 digest, version, training seed,
+feature schema, evaluation metadata, and runtime-compatibility notes. The
+runtime verifies the checksum before loading a selected surrogate artifact.
+Locally generated surrogate artifacts require:
 
 ```text
 DO, BOD, NH3N, EC, SS
