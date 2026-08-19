@@ -4,17 +4,21 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, Form, Response, UploadFile
+from fastapi import FastAPI, File, Form, Request, Response, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .enums import ModelTypeEnum
 from .schemas import (
     AssessmentRequestSchema,
     AssessmentResponseSchema,
+    ErrorResponseSchema,
     HealthResponseSchema,
     ReadinessResponseSchema,
 )
 from .services import RuntimeConfigurationError, WaterQualityService
+from .errors import ApplicationError, ErrorCode
 
 service = WaterQualityService()
 logger = logging.getLogger(__name__)
@@ -51,6 +55,40 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def error_response(status_code: int, code: ErrorCode, message: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content=ErrorResponseSchema(error={"code": code.value, "message": message}).model_dump(),
+    )
+
+
+@app.exception_handler(ApplicationError)
+async def application_error_handler(_: Request, exc: ApplicationError) -> JSONResponse:
+    return error_response(exc.status_code, exc.code, exc.message)
+
+
+@app.exception_handler(RuntimeConfigurationError)
+async def runtime_configuration_error_handler(_: Request, exc: RuntimeConfigurationError) -> JSONResponse:
+    logger.error("Runtime configuration error: %s", exc)
+    return error_response(503, ErrorCode.INVALID_CONFIGURATION, "The backend configuration is invalid.")
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+    logger.info("Request validation failed: %s errors", len(exc.errors()))
+    return error_response(
+        422,
+        ErrorCode.INVALID_ASSESSMENT_INPUT,
+        "The assessment request is invalid.",
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_error_handler(_: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled application error", exc_info=exc)
+    return error_response(500, ErrorCode.INTERNAL_ERROR, "An unexpected server error occurred.")
 
 
 @app.get("/", response_model=HealthResponseSchema)

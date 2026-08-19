@@ -44,3 +44,12 @@ class ReadinessResponseSchema(BaseModel):
     dataset_available: bool
     dataset_required: bool
     models: list[ModelAvailabilitySchema]
+
+
+class ErrorDetailSchema(BaseModel):
+    code: str
+    message: str
+
+
+class ErrorResponseSchema(BaseModel):
+    error: ErrorDetailSchema
