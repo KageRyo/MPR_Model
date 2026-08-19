@@ -177,7 +177,12 @@ async def test_v2_csv_contract_rejects_missing_columns(client: httpx.AsyncClient
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Missing required columns: SS"
+    assert response.json() == {
+        "error": {
+            "code": "invalid_csv",
+            "message": "The CSV upload must include all required measurement columns.",
+        }
+    }
 
 
 @pytest.fixture

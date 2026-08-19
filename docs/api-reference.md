@@ -107,6 +107,26 @@ Accepts a CSV upload and returns per-row results.
 The response contains `scores` (one value per CSV row), `model_type`, and
 `latency_ms`.
 
+## Error Responses
+
+Application-level v2 failures use one stable response shape:
+
+```json
+{
+  "error": {
+    "code": "model_unavailable",
+    "message": "The selected surrogate model is unavailable."
+  }
+}
+```
+
+The supported client-facing error codes are `invalid_assessment_input`,
+`invalid_csv`, `model_unavailable`, `dataset_unavailable`,
+`invalid_configuration`, and `internal_error`. HTTP request-schema validation
+also uses this shape with status `422` and `invalid_assessment_input`; field
+details remain available in server-side diagnostics rather than being exposed
+to frontend users.
+
 ## Model Types
 
 Supported `model_type` values:

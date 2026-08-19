@@ -7,7 +7,7 @@ from pathlib import Path
 
 import joblib
 import pandas as pd
-from fastapi import HTTPException, UploadFile
+from fastapi import UploadFile
 
 from .artifacts import (
     ArtifactValidationError,
@@ -16,6 +16,7 @@ from .artifacts import (
     validate_artifact,
 )
 from .enums import ModelTypeEnum
+from .errors import ApplicationError, ErrorCode
 from .schemas import AssessmentRequestSchema, AssessmentResponseSchema
 from .settings import FEATURE_COLUMNS, MODEL_DIR_NAMES, Settings
 from .wqi import assess_indicator_quality, categorize_score, direct_wqi5_score
@@ -139,8 +140,12 @@ class WaterQualityService:
             try:
                 self._dataset = pd.read_csv(self.settings.dataset_path)
                 self._scores = self._dataset["Score"]
-            except FileNotFoundError as exc:
-                raise HTTPException(status_code=500, detail=f"Dataset not found: {exc}") from exc
+            except (FileNotFoundError, OSError, pd.errors.ParserError, KeyError) as exc:
+                raise ApplicationError(
+                    status_code=503,
+                    code=ErrorCode.DATASET_UNAVAILABLE,
+                    message="The required dataset is unavailable.",
+                ) from exc
         return self._dataset
 
     def _validate_record(self, record: dict[str, float]) -> list[str]:
@@ -173,13 +178,28 @@ class WaterQualityService:
 
     def _load_model(self, model_type: ModelTypeEnum):
         if model_type not in MODEL_DIR_NAMES:
-            raise HTTPException(status_code=400, detail=f"Unsupported model_type: {model_type}")
+            raise ApplicationError(
+                status_code=400,
+                code=ErrorCode.INVALID_ASSESSMENT_INPUT,
+                message="The requested model type is not supported.",
+            )
         if model_type not in self._models:
             try:
                 artifact = self._pick_artifact(model_type)
             except ArtifactValidationError as exc:
-                raise HTTPException(status_code=503, detail=str(exc)) from exc
-            self._models[model_type] = joblib.load(artifact)
+                raise ApplicationError(
+                    status_code=503,
+                    code=ErrorCode.MODEL_UNAVAILABLE,
+                    message="The selected surrogate model is unavailable.",
+                ) from exc
+            try:
+                self._models[model_type] = joblib.load(artifact)
+            except Exception as exc:
+                raise ApplicationError(
+                    status_code=503,
+                    code=ErrorCode.MODEL_UNAVAILABLE,
+                    message="The selected surrogate model is unavailable.",
+                ) from exc
         return self._models[model_type]
 
     def list_models(self) -> list[dict]:
@@ -257,13 +277,26 @@ class WaterQualityService:
         try:
             frame = pd.read_csv(io.BytesIO(content))
         except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"Invalid CSV payload: {exc}") from exc
+            raise ApplicationError(
+                status_code=400,
+                code=ErrorCode.INVALID_CSV,
+                message="The CSV upload is invalid.",
+            ) from exc
         missing_columns = [column for column in FEATURE_COLUMNS if column not in frame.columns]
         if missing_columns:
-            raise HTTPException(
+            raise ApplicationError(
                 status_code=400,
-                detail=f"Missing required columns: {', '.join(missing_columns)}",
+                code=ErrorCode.INVALID_CSV,
+                message="The CSV upload must include all required measurement columns.",
             )
+        try:
+            frame[FEATURE_COLUMNS] = frame[FEATURE_COLUMNS].apply(pd.to_numeric, errors="raise")
+        except (TypeError, ValueError) as exc:
+            raise ApplicationError(
+                status_code=400,
+                code=ErrorCode.INVALID_CSV,
+                message="The CSV upload must contain numeric measurement values.",
+            ) from exc
         return frame
 
     def assess_csv_summary(self, upload_file: UploadFile, model_type: ModelTypeEnum | None = None) -> AssessmentResponseSchema:
