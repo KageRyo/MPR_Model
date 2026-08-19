@@ -75,7 +75,7 @@ async def test_v2_health_and_ready_contract(client: httpx.AsyncClient) -> None:
         "status": "ok",
         "message": "WQSurrogateModels v2 is healthy.",
         "default_model": "direct_wqi5",
-        "version": "2.1.0",
+        "version": "2.2.0",
     }
     assert ready.status_code == 200
     ready_payload = ready.json()

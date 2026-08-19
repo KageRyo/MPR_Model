@@ -69,7 +69,7 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           RELEASE_NAME: ${{ github.event.release.name }}
         run: |
-          expected_version="$(uv run --locked python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          expected_version="$(uv run --locked python -c 'from wqsurrogatemodels import __version__; print(__version__)')"
           expected_tag="${RELEASE_TAG_PREFIX}${expected_version}"
           expected_name="WQSurrogateModels v${expected_version}"
           test "$RELEASE_TAG" = "$expected_tag"
