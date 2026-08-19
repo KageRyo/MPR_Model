@@ -22,6 +22,11 @@ curl http://localhost:8001/api/v2/health
 
 Checks whether the service is ready to accept assessments. Clients should use
 this endpoint for readiness checks and reserve `/health` for process reachability.
+It returns `200` with `status: "ready"` when configured required dependencies
+are available, or `503` with `status: "not_ready"` when they are not. The
+response reports whether the optional local dataset is available and a safe
+availability summary for every supported model type; it never includes local
+filesystem paths.
 
 ### `GET /api/v2/models`
 
