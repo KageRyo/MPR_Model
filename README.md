@@ -71,8 +71,13 @@ Key variables:
 - `API_HOST=0.0.0.0`
 - `API_PORT=8001`
 - `AUTO_PORT=false`
+- `CORS_ALLOW_ORIGINS=*` (use a comma-separated allowlist outside local development)
 - `DATASET_FILE=dataV1.csv` (expects `data/dataV1.csv`; place downloaded and
   processed data in the ignored `data/` directory)
+
+Runtime configuration is parsed once at process startup. Invalid values such as
+a non-integer `API_PORT`, an unknown `DEFAULT_MODEL`, or malformed booleans
+cause a clear startup failure rather than being silently coerced.
 
 ## Install
 
@@ -169,6 +174,11 @@ With `AUTO_PORT=true`, the server tries `API_PORT` first and then scans upward (
 ## API
 
 Primary endpoints live under `/api/v2/*`.
+
+`GET /api/v2/health` exposes the canonical backend `version`. `GET
+/api/v2/models` reports model availability and version metadata without exposing
+local artifact paths. See the [API reference](docs/api-reference.md) for the
+complete response contracts.
 
 ### Quick example
 
