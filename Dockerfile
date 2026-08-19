@@ -1,10 +1,29 @@
 FROM python:3.11-slim
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
-COPY . .
-RUN pip install --no-cache-dir ".[models]"
+# The runtime image includes source code and the public manifest only. Local
+# datasets and serialized model artifacts are supplied as read-only mounts.
+COPY pyproject.toml README-PYPI.md LICENSE ./
+COPY src ./src
+COPY main.py ./
+COPY models/production_model_manifest.json ./models/production_model_manifest.json
+
+# A direct-WQI5 deployment needs only the base package. Enable optional model
+# libraries explicitly when the mounted production manifest selects them.
+ARG INSTALL_MODEL_EXTRAS=false
+RUN if [ "$INSTALL_MODEL_EXTRAS" = "true" ]; then \
+      pip install --no-cache-dir ".[models]"; \
+    else \
+      pip install --no-cache-dir .; \
+    fi
 
 EXPOSE 8001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD python -c "from urllib.request import urlopen; urlopen('http://127.0.0.1:8001/api/v2/health', timeout=3)" || exit 1
 
 CMD ["python", "main.py"]
