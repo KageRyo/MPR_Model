@@ -47,11 +47,23 @@ async def test_invalid_csv_uses_a_safe_error_without_parser_details(client: http
 
 
 @pytest.mark.anyio
-async def test_unavailable_model_uses_a_stable_error_shape(client: httpx.AsyncClient):
-    response = await client.post(
-        "/api/v2/assessment",
-        json={"DO": 96.2, "BOD": 1.5, "NH3N": 0.22, "EC": 171, "SS": 2.6, "model_type": "lr"},
+async def test_unavailable_model_uses_a_stable_error_shape(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    service = WaterQualityService(
+        Settings(
+            project_root=tmp_path,
+            model_dir=tmp_path / "models",
+            production_manifest_path=tmp_path / "models" / "production_model_manifest.json",
+        )
     )
+    monkeypatch.setattr(api, "service", service)
+    transport = httpx.ASGITransport(app=api.app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.post(
+            "/api/v2/assessment",
+            json={"DO": 96.2, "BOD": 1.5, "NH3N": 0.22, "EC": 171, "SS": 2.6, "model_type": "lr"},
+        )
 
     assert_error(response, 503, "model_unavailable", "The selected surrogate model is unavailable.")
 

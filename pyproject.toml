@@ -28,7 +28,7 @@ classifiers = [
 ]
 dependencies = [
   "fastapi",
-  "joblib",
+  "joblib==1.5.3",
   "loguru",
   "numpy",
   "pandas",
@@ -53,8 +53,14 @@ test = [
   "anyio>=4.0",
 ]
 models = [
-  "lightgbm",
-  "xgboost",
+  "lightgbm==4.6.0",
+  "xgboost==2.1.4",
+]
+lightgbm = [
+  "lightgbm==4.6.0",
+]
+xgboost = [
+  "xgboost==2.1.4",
 ]
 package = [
   "build>=1.2",

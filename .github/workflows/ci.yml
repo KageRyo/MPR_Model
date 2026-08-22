@@ -93,3 +93,26 @@ jobs:
 
       - name: Smoke test local API runtime
         run: uv run python scripts/smoke_api.py
+
+  arm64-model-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build ARM64 image with optional model dependencies
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/arm64
+          push: false
+          build-args: |
+            INSTALL_MODEL_EXTRAS=true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
