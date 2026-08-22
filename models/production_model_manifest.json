@@ -11,7 +11,7 @@
       "training_seed": 0,
       "feature_columns": ["DO", "BOD", "NH3N", "EC", "SS"],
       "evaluation": {"source": "external_10714", "experiment": "full_reference"},
-      "runtime_compatibility": {"python": ">=3.10", "scikit_learn": "1.5.2", "lightgbm": "required to load this artifact"},
+      "runtime_compatibility": {"python": ">=3.10", "joblib": "1.5.3", "scikit_learn": "1.5.2", "lightgbm": "4.6.0"},
       "metrics": {
         "r2": 0.9990805813423108,
         "mae": 0.2754741558113605,
@@ -28,7 +28,7 @@
       "training_seed": 0,
       "feature_columns": ["DO", "BOD", "NH3N", "EC", "SS"],
       "evaluation": {"source": "external_10714", "experiment": "full_reference"},
-      "runtime_compatibility": {"python": ">=3.10", "scikit_learn": "1.5.2"},
+      "runtime_compatibility": {"python": ">=3.10", "joblib": "1.5.3", "scikit_learn": "1.5.2"},
       "metrics": {
         "r2": 0.7202374432792198,
         "mae": 6.4482568062492645,
@@ -45,7 +45,7 @@
       "training_seed": 3,
       "feature_columns": ["DO", "BOD", "NH3N", "EC", "SS"],
       "evaluation": {"source": "external_10714", "experiment": "full_reference"},
-      "runtime_compatibility": {"python": ">=3.10", "scikit_learn": "1.5.2"},
+      "runtime_compatibility": {"python": ">=3.10", "joblib": "1.5.3", "scikit_learn": "1.5.2"},
       "metrics": {
         "r2": 0.8495151243723684,
         "mae": 4.7018059945892094,
@@ -62,7 +62,7 @@
       "training_seed": 0,
       "feature_columns": ["DO", "BOD", "NH3N", "EC", "SS"],
       "evaluation": {"source": "external_10714", "experiment": "full_reference"},
-      "runtime_compatibility": {"python": ">=3.10", "scikit_learn": "1.5.2"},
+      "runtime_compatibility": {"python": ">=3.10", "joblib": "1.5.3", "scikit_learn": "1.5.2"},
       "metrics": {
         "r2": 0.99778224351677,
         "mae": 0.3956594238068575,
@@ -79,7 +79,7 @@
       "training_seed": 3,
       "feature_columns": ["DO", "BOD", "NH3N", "EC", "SS"],
       "evaluation": {"source": "external_10714", "experiment": "full_reference"},
-      "runtime_compatibility": {"python": ">=3.10", "scikit_learn": "1.5.2"},
+      "runtime_compatibility": {"python": ">=3.10", "joblib": "1.5.3", "scikit_learn": "1.5.2"},
       "metrics": {
         "r2": 0.9653924714161132,
         "mae": 2.1114846808410697,
@@ -96,7 +96,7 @@
       "training_seed": 2,
       "feature_columns": ["DO", "BOD", "NH3N", "EC", "SS"],
       "evaluation": {"source": "external_10714", "experiment": "full_reference"},
-      "runtime_compatibility": {"python": ">=3.10", "scikit_learn": "1.5.2", "xgboost": "required to load this artifact"},
+      "runtime_compatibility": {"python": ">=3.10", "joblib": "1.5.3", "scikit_learn": "1.5.2", "xgboost": "2.1.4"},
       "metrics": {
         "r2": 0.9993356816434588,
         "mae": 0.2448908820836784,

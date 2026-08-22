@@ -1,3 +1,5 @@
+FROM ghcr.io/astral-sh/uv:0.12.5 AS uv
+
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -5,9 +7,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+COPY --from=uv /uv /uvx /bin/
+
+# LightGBM's published wheels need the OpenMP runtime on slim Debian images.
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # The runtime image includes source code and the public manifest only. Local
 # datasets and serialized model artifacts are supplied as read-only mounts.
-COPY pyproject.toml README-PYPI.md LICENSE ./
+COPY pyproject.toml uv.lock README-PYPI.md LICENSE ./
 COPY src ./src
 COPY main.py ./
 COPY models/production_model_manifest.json ./models/production_model_manifest.json
@@ -15,11 +24,16 @@ COPY models/production_model_manifest.json ./models/production_model_manifest.js
 # A direct-WQI5 deployment needs only the base package. Enable optional model
 # libraries explicitly when the mounted production manifest selects them.
 ARG INSTALL_MODEL_EXTRAS=false
-RUN if [ "$INSTALL_MODEL_EXTRAS" = "true" ]; then \
-      pip install --no-cache-dir ".[models]"; \
+ARG MODEL_EXTRAS=""
+RUN if [ -n "$MODEL_EXTRAS" ]; then \
+      uv sync --locked --no-dev --extra "$MODEL_EXTRAS"; \
+    elif [ "$INSTALL_MODEL_EXTRAS" = "true" ]; then \
+      uv sync --locked --no-dev --extra models; \
     else \
-      pip install --no-cache-dir .; \
+      uv sync --locked --no-dev; \
     fi
+
+ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8001
 

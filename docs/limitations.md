@@ -9,7 +9,7 @@
   and preprocessing operations needed to prepare a compatible local input.
 - The supported task is cross-sectional WQI5 assessment rather than
   time-dependent prediction.
-- Optional surrogate model families such as `xgboost` and `lightgbm` require additional runtime dependencies when training or loading those artifacts.
+- Optional surrogate model families such as `xgboost` and `lightgbm` require their exact recorded runtime dependencies when loading production artifacts; see [Production Artifact and ARM64 Runtime](edge-runtime.md).
 - Direct WQI5 computation remains the reference method under complete-input conditions; surrogate models should not be described as mathematically superior to the deterministic formula.
 - Reduced-indicator experiments estimate the reference WQI5 score under incomplete-input scenarios. They support incomplete-input analysis, not claims of future water-quality forecasting.
 - The external hold-out results show that missing `NH3N` can still support useful auxiliary estimation, but missing `BOD` and especially `BOD + NH3N` have weak external generalization as reduced-input substitutes.

@@ -112,6 +112,12 @@ def test_production_model_manifest_lists_current_artifacts():
     assert manifest["manifest_version"] == 1
     assert manifest["required_feature_columns"] == ["DO", "BOD", "NH3N", "EC", "SS"]
     assert manifest["api_contract"] == "complete-input WQI5 surrogate; required features are DO, BOD, NH3N, EC, SS"
+    for artifact in artifacts.values():
+        assert artifact["runtime_compatibility"]["python"] == ">=3.10"
+        assert artifact["runtime_compatibility"]["joblib"] == "1.5.3"
+        assert artifact["runtime_compatibility"]["scikit_learn"] == "1.5.2"
+    assert artifacts["xgboost"]["runtime_compatibility"]["xgboost"] == "2.1.4"
+    assert artifacts["lightgbm"]["runtime_compatibility"]["lightgbm"] == "4.6.0"
 
 
 @pytest.mark.anyio

@@ -96,7 +96,7 @@ uv sync --extra dev
 uv run pytest
 ```
 
-To enable the full set of surrogate model libraries (`xgboost` and `lightgbm`) as well:
+To enable the full set of optional surrogate model libraries (`xgboost` and `lightgbm`) as well:
 
 ```bash
 uv sync --extra dev --extra models
@@ -118,8 +118,12 @@ pip install -e ".[dev]"
 ```
 
 Local or externally provided scikit-learn surrogate artifacts should be loaded
-with the compatible scikit-learn version used during export. See
-`models/production_model_manifest.json` for the expected local paths.
+with the exact runtime versions recorded in
+[`models/production_model_manifest.json`](models/production_model_manifest.json).
+The base install supports `direct_wqi5` and scikit-learn artifacts such as
+Random Forest; install `xgboost` or `lightgbm` extras only for artifacts that
+need them. See [Production Artifact and ARM64 Runtime](docs/edge-runtime.md)
+for the compatibility matrix and deployment commands.
 
 To also enable the full set of surrogate models with `pip`:
 

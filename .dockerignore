@@ -15,3 +15,6 @@ archive/
 statistics/outputs/
 *.pkl
 *.joblib
+models/*
+!models/production_model_manifest.json
+__pycache__/

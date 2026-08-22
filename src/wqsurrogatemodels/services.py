@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import time
 from pathlib import Path
 
@@ -16,9 +17,14 @@ from .artifacts import (
 )
 from .enums import ModelTypeEnum
 from .errors import ApplicationError, ErrorCode
+from .model_runtime import ArtifactRuntimeCompatibilityError, validate_artifact_runtime
 from .schemas import AssessmentRequestSchema, AssessmentResponseSchema
 from .settings import FEATURE_COLUMNS, MODEL_DIR_NAMES, Settings
 from .wqi import assess_indicator_quality, categorize_score, direct_wqi5_score
+from .xgboost_artifacts import load_xgboost_pickle
+
+
+logger = logging.getLogger(__name__)
 
 
 class RuntimeConfigurationError(ValueError):
@@ -79,8 +85,11 @@ class WaterQualityService:
 
         if manifest_error is None and default_model != ModelTypeEnum.DIRECT_WQI5:
             try:
-                _ = self._pick_artifact(default_model)
-            except ArtifactValidationError as exc:
+                artifact = self._pick_artifact(default_model)
+                validate_artifact_runtime(
+                    self.production_manifest.artifact_for(default_model), artifact_path=artifact
+                )
+            except (ArtifactValidationError, ArtifactRuntimeCompatibilityError) as exc:
                 errors.append(str(exc))
 
         if self.settings.require_dataset_for_readiness and not self._dataset_is_available():
@@ -102,9 +111,12 @@ class WaterQualityService:
         ]
         for model_type in MODEL_DIR_NAMES:
             try:
-                _ = self._pick_artifact(model_type)
+                artifact = self._pick_artifact(model_type)
+                validate_artifact_runtime(
+                    self.production_manifest.artifact_for(model_type), artifact_path=artifact
+                )
                 available = True
-            except ArtifactValidationError:
+            except (ArtifactValidationError, ArtifactRuntimeCompatibilityError):
                 available = False
             availability.append({"model_type": model_type, "available": available})
         return availability
@@ -178,15 +190,29 @@ class WaterQualityService:
         if model_type not in self._models:
             try:
                 artifact = self._pick_artifact(model_type)
-            except ArtifactValidationError as exc:
+                validate_artifact_runtime(
+                    self.production_manifest.artifact_for(model_type), artifact_path=artifact
+                )
+            except (ArtifactValidationError, ArtifactRuntimeCompatibilityError) as exc:
+                logger.warning("Surrogate model runtime validation failed: %s", exc)
                 raise ApplicationError(
                     status_code=503,
                     code=ErrorCode.MODEL_UNAVAILABLE,
                     message="The selected surrogate model is unavailable.",
                 ) from exc
             try:
-                self._models[model_type] = joblib.load(artifact)
+                if model_type == ModelTypeEnum.XGBOOST:
+                    model, legacy_warning_detected = load_xgboost_pickle(artifact)
+                    if legacy_warning_detected:
+                        logger.warning(
+                            "Loaded a legacy XGBoost pickle. Run "
+                            "scripts/rehydrate_xgboost_artifact.py to create and verify a candidate artifact."
+                        )
+                    self._models[model_type] = model
+                else:
+                    self._models[model_type] = joblib.load(artifact)
             except Exception as exc:
+                logger.warning("Surrogate model load failed: %s", exc)
                 raise ApplicationError(
                     status_code=503,
                     code=ErrorCode.MODEL_UNAVAILABLE,
@@ -205,8 +231,11 @@ class WaterQualityService:
         for model_type in MODEL_DIR_NAMES:
             try:
                 artifact = self._pick_artifact(model_type)
+                validate_artifact_runtime(
+                    self.production_manifest.artifact_for(model_type), artifact_path=artifact
+                )
                 version = self.production_manifest.artifact_for(model_type).version
-            except ArtifactValidationError:
+            except (ArtifactValidationError, ArtifactRuntimeCompatibilityError):
                 artifact = None
                 version = None
             models.append(
