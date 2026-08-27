@@ -53,11 +53,11 @@ test = [
   "anyio>=4.0",
 ]
 models = [
-  "lightgbm==4.6.0",
+  "lightgbm==4.7.0",
   "xgboost==2.1.4",
 ]
 lightgbm = [
-  "lightgbm==4.6.0",
+  "lightgbm==4.7.0",
 ]
 xgboost = [
   "xgboost==2.1.4",
